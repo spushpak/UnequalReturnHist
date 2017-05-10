@@ -1,14 +1,39 @@
-rm(list=ls())
-setwd("C:/UW/RDev/CBF")
+#' @title Implements Multiple Imputation Method folowing Page(2013)
+#' 
+#' @description This function implements Multiple Imputation Method folowing 
+#' Page(2013)
+#' 
+#' @importFrom xts xts
+#' @importFrom moments skewness kurtosis
+#' 
+#' 
+#' @param dat.mat is the returns data for multiple assets with unequal return history.
+#' @param saveReps is a logical flag, to indicate whether the risk measures  
+#' need to be computed for all the replicates. Default is FALSE.
+#' 
+#' @return
+#' \item{risk.list}{A list or matrix containing risk measures for either the whole dataset or for each replicate.}
+#'    
+#' @author Pushpak Sarkar
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' @export
+#' 
 
-source("cbf_functions.R")
-library(xts)
-library(moments)
+# library(xts)
+# library(moments)
+# 
+# # Read data
+# #dat.mat <- read.csv("Wilshire and MSCI EM.csv", header = T, stringsAsFactors = F)
+# #dat.mat <- read.csv("multiple_grps.csv", header = T, stringsAsFactors = F)
+# dat.mat <- read.csv("hfunds5_ue_ts.csv", header = T, stringsAsFactors = F)
 
-# Read data
-#dat.mat <- read.csv("Wilshire and MSCI EM.csv", header = T, stringsAsFactors = F)
-#dat.mat <- read.csv("multiple_grps.csv", header = T, stringsAsFactors = F)
-dat.mat <- read.csv("hfunds5_ue_ts.csv", header = T, stringsAsFactors = F)
+
+uneqhistPage <- function(dat.mat, saveReps=FALSE){
 
 # Convert the data to xts object (probably it's not necessary)
 dat.xts <- xts(dat.mat[, -1], order.by = as.Date(dat.mat[, 1], "%m/%d/%Y"))
@@ -37,9 +62,6 @@ na_count <- na_count[miss.hist.var, "num.miss", drop=F]
 # Sort count of missing obs from smallest to largest
 miss.itr <- sort(unique(na_count[,"num.miss"]))
 
-# Create rgression expression for 'lm()' function
-regressor.list <- paste(long.hist.var, collapse = "+")
-
 # Full length of the dataset
 full.length <- nrow(dat.xts)
 
@@ -59,8 +81,9 @@ for (i in miss.itr) {
   resid.mat[(length(reg.dat$miss.val)+1):nrow(resid.mat), short.hist.var] <- reg.dat$err.mat[, short.hist.var]
 } ############# end of for loop (for each short history group)
 
-risk.list <- uneqhistPage(fitted.xts, resid.mat, miss.hist.var, miss.itr, na_count, saveReps=FALSE)
+risk.list <- constructPageData(fitted.xts, resid.mat, miss.hist.var, miss.itr, 
+                               na_count, sReps=saveReps)
 
-round(risk.list, digits = 3)
+return(round(risk.list, digits = 3))
 
-
+}
