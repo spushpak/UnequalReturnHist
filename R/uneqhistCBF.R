@@ -26,15 +26,83 @@
 #' @export
 #' 
 
+#### Do the regression and find fitted value for the missing returns
+fitValue <- function(short.hist.var, long.hist.var, ret.dat, num.miss){
+  
+  regressor.list <- paste(long.hist.var, collapse = "+")
+  
+  est.coef <- matrix(0, nrow=length(long.hist.var)+1, ncol=length(short.hist.var),
+                     dimnames=list(c("Intercept", long.hist.var), short.hist.var))
+  
+  num.miss <- num.miss
+  len.diff <- nrow(ret.dat) - num.miss
+  
+  err.mat <- matrix(0, nrow=len.diff, ncol=length(short.hist.var))
+  colnames(err.mat) <- short.hist.var
+  
+  for (j in short.hist.var) {
+    reg.eqn <- paste(j, "~", regressor.list)
+    reg <- lm(as.formula(reg.eqn), data=ret.dat)
+    
+    est.coef[ , j] <- as.matrix(coef(reg))
+    err.mat[ , j] <- as.matrix(resid(reg))
+  }
+  
+  miss.val <- which(is.na(ret.dat[, short.hist.var[1]]))
+  
+  for (k in 1:num.miss) {
+    X.mat <- cbind(1, ret.dat[miss.val[k], long.hist.var])
+    ret.dat[miss.val[k], short.hist.var] <- X.mat%*%est.coef
+  }
+  
+  # Remove the long.hist.var
+  ret.dat <- ret.dat[, ! names(ret.dat) %in% long.hist.var, drop=FALSE]
+  
+  # Create a list of fitted values, error matrix and missing values
+  reg.dat <- list(fitted.dat=ret.dat, err.mat=err.mat, miss.val=miss.val)
+  
+  return(reg.dat)
+}
 
-# library(xts)
-# library(moments)
-# library(PerformanceAnalytics)
-# 
-# # Read data
-# #dat.mat <- read.csv("Wilshire and MSCI EM.csv", header = T, stringsAsFactors = F)
-# #dat.mat <- read.csv("multiple_grps.csv", header = T, stringsAsFactors = F)
- #dat.mat <- read.csv("C:/UW/RDev/CBF/hfunds5_ue_ts.csv", header = T, stringsAsFactors = F)
+
+### Constrcut the combined backfilled dataset based on the number of residuals
+
+constructCBFData <- function(reg.dat, new.dat, full.length){
+  
+  num.resid <- nrow(reg.dat$err.mat)
+  miss.val <- reg.dat$miss.val
+  err.mat <- reg.dat$err.mat
+  num.miss <- length(miss.val)
+  short.hist.var <- colnames(reg.dat$err.mat)
+  
+  # Stack the original block 'new.dat' equal to number of residual times
+  temp.newdat <- matrix(rep(t(coredata(new.dat)), num.resid), ncol= ncol(new.dat), 
+                        byrow=TRUE)
+  colnames(temp.newdat) <- colnames(new.dat)
+  
+  # Number of times the 'fitted.dat' i.e. short.hist.var should be repeated
+  rep.num <- nrow(temp.newdat)/full.length
+  temp.fitdat <- matrix(rep(t(coredata(reg.dat$fitted.dat)), rep.num), 
+                        ncol= ncol(reg.dat$fitted.dat), byrow=TRUE)
+  colnames(temp.fitdat) <- colnames(reg.dat$fitted.dat)
+  
+  # Merge the existing new.dat and fitted.dat
+  new.dat <- cbind(temp.newdat, temp.fitdat)
+  
+  # Crate the start index of each repeating block
+  rep.indx <- seq(from = miss.val[1]-1, by = nrow(new.dat)/num.resid, 
+                  length.out = num.resid)
+  
+  
+  # Add the  respective residual to the fitted values of short history vars
+  for (m in 1:length(rep.indx)) {
+    for (n in 1:num.miss) {
+      new.dat[rep.indx[m]+n, short.hist.var] <- new.dat[rep.indx[m]+n, short.hist.var] + err.mat[m, short.hist.var]
+    }
+  }
+  return(new.dat)
+}
+
 
 
 uneqhistCBF <- function(dat.mat, saveReps=FALSE){
@@ -82,7 +150,7 @@ for (i in miss.itr) {
 } 
 
 
-################################################################################
+######################################################################
 # Create the start index of each repeating block in the new dataset. Each repeating
 # block has length equal to the row numbers of initial dataset.
 row.grp <- seq(1, nrow(new.dat), by=full.length)
@@ -137,6 +205,3 @@ if(saveReps==TRUE)
 else 
   return(risk.vals)
 }
-
-
-
