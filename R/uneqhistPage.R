@@ -68,7 +68,7 @@ fitValue <- function(short.hist.var, long.hist.var, ret.dat, num.miss){
 constructPageData <- function(fitted.xts, resid.mat, miss.hist.var, miss.itr, na_count, sReps){
   
   # No. of bootstrap samples
-  #M = 100000
+  #M <- 10000
   M = 100
   
   # Create an empty list
@@ -118,9 +118,10 @@ constructPageData <- function(fitted.xts, resid.mat, miss.hist.var, miss.itr, na
     risk.mat["Kurtosis", ] <- moments::kurtosis(fitted.xts[, miss.hist.var])
     risk.mat["Mean", ] <- colMeans(fitted.xts[, miss.hist.var])
     risk.mat["Volatility", ] <- apply(fitted.xts[, miss.hist.var], 2, sd)
-    #risk.mat["Sharpe Ratio", ] <- SharpeRatio(fitted.xts[, miss.hist.var], FUN="StdDev")
-    risk.mat["Sharpe Ratio", ] <- risk.mat["Mean", ]/risk.mat["Volatility", ]
-    #risk.mat["Expected Shortfall", ] <- ES(fitted.xts[, miss.hist.var], p=.95, method="historical")
+    risk.mat["Sharpe Ratio", ] <- apply(fitted.xts[, miss.hist.var], 2, SharpeRatio, 
+                                        FUN="StdDev")
+    risk.mat["Expected Shortfall", ] <- apply(fitted.xts[, miss.hist.var], 2, ES, 
+                                              p=0.95, method="historical")
     risk.metrics[[i]] <- risk.mat
     
     temp.skew[i, ] <- risk.mat["Skewness", ]  

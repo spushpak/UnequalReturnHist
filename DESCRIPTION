@@ -12,7 +12,8 @@ Depends:
     xts (>= 0.9),
     zoo
 Imports:
-    moments
+    moments,
+    PerformanceAnalytics
 Suggests:
     testthat
 LazyLoad: yes

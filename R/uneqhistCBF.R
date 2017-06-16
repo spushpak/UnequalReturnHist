@@ -182,9 +182,8 @@ for (j in 0:(num.block-1)) {
   risk.mat["Kurtosis", ] <- moments::kurtosis(block.dat)
   risk.mat["Mean", ] <- colMeans(block.dat)
   risk.mat["Volatility", ] <- apply(block.dat, 2, sd)
-  #risk.mat["Sharpe Ratio", ] <- SharpeRatio(mom.dat, FUN="StdDev")
-  risk.mat["Sharpe Ratio", ] <- risk.mat["Mean", ]/risk.mat["Volatility", ]
-  #risk.mat["Expected Shortfall", ] <- ES(mom.dat, p=.95, method="historical")
+  risk.mat["Sharpe Ratio", ] <- apply(block.dat, 2, SharpeRatio, FUN="StdDev")
+  risk.mat["Expected Shortfall", ] <- apply(block.dat, 2, ES, p=0.95, method="historical")
 
   risk.metrics[[j+1]] <- risk.mat
 }
@@ -196,12 +195,14 @@ risk.vals["Skewness", ] <- moments::skewness(new.dat[, miss.hist.var])
 risk.vals["Kurtosis", ] <- moments::kurtosis(new.dat[, miss.hist.var])
 risk.vals["Mean", ] <- colMeans(new.dat[, miss.hist.var])
 risk.vals["Volatility", ] <- apply(new.dat[, miss.hist.var], 2, sd)
-risk.vals["Sharpe Ratio", ] <- risk.vals["Mean", ]/risk.vals["Volatility", ]
-#risk.vals["Expected Shortfall", ] <- ES(new.dat[, miss.hist.var], p=.95, method="historical")
+risk.vals["Sharpe Ratio", ] <- apply(new.dat[, miss.hist.var], 2, SharpeRatio, 
+                                     FUN="StdDev")
+risk.vals["Expected Shortfall", ] <- apply(new.dat[, miss.hist.var], 2, ES, 
+                                           p=0.95, method="historical")
 
 
 if(saveReps==TRUE) 
-  return(risk.metrics) 
+  return(round(risk.metrics, digits = 3)) 
 else 
-  return(risk.vals)
+  return(round(risk.vals, digits = 3))
 }
