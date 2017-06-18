@@ -17,7 +17,7 @@
 #' @author Pushpak Sarkar
 #' 
 #' 
-#' @rdname uneqhistPage
+#' @rdname uneqhistMI
 #' @export
 
 uneqhistPage <- function(dat.mat, saveReps=FALSE){
@@ -119,8 +119,8 @@ fitValue <- function(short.hist.var, long.hist.var, ret.dat, num.miss){
 constructPageData <- function(fitted.xts, resid.mat, miss.hist.var, miss.itr, na_count, sReps){
   
   # No. of bootstrap samples
-  #M <- 10000
-  M = 100
+  M <- 100000
+  
   
   # Create an empty list
   risk.metrics <- vector("list", M)
