@@ -20,7 +20,7 @@
 #' @rdname uneqhistMI
 #' @export
 
-uneqhistPage <- function(dat.mat, saveReps=FALSE){
+uneqhistMI <- function(dat.mat, saveReps=FALSE){
   
   # Convert the data to xts object (probably it's not necessary)
   dat.xts <- xts(dat.mat[, -1], order.by = as.Date(dat.mat[, 1], "%m/%d/%Y"))
