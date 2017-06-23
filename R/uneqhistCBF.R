@@ -28,7 +28,7 @@ uneqhistCBF <- function(dat.mat, saveReps=FALSE){
   dat.xts <- xts(dat.mat[, -1], order.by = as.Date(dat.mat[, 1], "%m/%d/%Y"))
   
   # Keep a copy of original data
-  old.xts <- dat.xts 
+  #old.xts <- dat.xts 
   
   # Find which columns have 'NA' values; so these columns have shorter histtory
   miss.hist.var <- colnames(dat.xts)[apply(dat.xts, 2, anyNA)]
@@ -99,7 +99,8 @@ uneqhistCBF <- function(dat.mat, saveReps=FALSE){
     risk.mat["Kurtosis", ] <- moments::kurtosis(block.dat)
     risk.mat["Mean", ] <- colMeans(block.dat)
     risk.mat["Volatility", ] <- apply(block.dat, 2, sd)
-    risk.mat["Sharpe Ratio", ] <- apply(block.dat, 2, SharpeRatio, FUN="StdDev")
+    risk.mat["Sharpe Ratio", ] <- risk.mat["Mean", ] / risk.mat["Volatility", ]
+    #risk.mat["Sharpe Ratio", ] <- apply(block.dat, 2, SharpeRatio, FUN = "StdDev")
     risk.mat["Expected Shortfall", ] <- apply(block.dat, 2, ES, p=0.95, method="historical")
     
     risk.metrics[[j+1]] <- risk.mat
@@ -108,20 +109,20 @@ uneqhistCBF <- function(dat.mat, saveReps=FALSE){
   
   # Constrcut the risk matrix for the aggregate CBF data
   
-  risk.vals["Skewness", ] <- moments::skewness(new.dat[, miss.hist.var])
-  risk.vals["Kurtosis", ] <- moments::kurtosis(new.dat[, miss.hist.var])
-  risk.vals["Mean", ] <- colMeans(new.dat[, miss.hist.var])
-  risk.vals["Volatility", ] <- apply(new.dat[, miss.hist.var], 2, sd)
-  risk.vals["Sharpe Ratio", ] <- apply(new.dat[, miss.hist.var], 2, SharpeRatio, 
-                                       FUN="StdDev")
-  risk.vals["Expected Shortfall", ] <- apply(new.dat[, miss.hist.var], 2, ES, 
-                                             p=0.95, method="historical")
+  risk.vals["Skewness", ] <- moments::skewness(new.dat[, miss.hist.var, drop=F])
+  risk.vals["Kurtosis", ] <- moments::kurtosis(new.dat[, miss.hist.var, drop=F])
+  risk.vals["Mean", ] <- colMeans(new.dat[, miss.hist.var, drop=F])
+  risk.vals["Volatility", ] <- apply(new.dat[, miss.hist.var, drop=F], 2, sd)
+  risk.vals["Sharpe Ratio", ] <- risk.vals["Mean", ] / risk.vals["Volatility", ]
+  #risk.vals["Sharpe Ratio", ] <- apply(new.dat[, miss.hist.var, drop=F], 2, SharpeRatio, FUN="StdDev")
+  risk.vals["Expected Shortfall", ] <- apply(new.dat[, miss.hist.var, drop=F], 2, Es) 
+  
   
   
   if(saveReps==TRUE) 
-    return(round(risk.metrics, digits = 3)) 
+    return(round(risk.metrics, digits = 4)) 
   else 
-    return(round(risk.vals, digits = 3))
+    return(round(risk.vals, digits = 4))
 }
 
 
@@ -201,3 +202,9 @@ constructCBFData <- function(reg.dat, new.dat, full.length){
   return(new.dat)
 }
 
+# Expected Shortfall
+Es <- function(r, alpha = 0.05) {
+  r <- sort(r); mean <- mean(r)
+  n.tail <- ifelse( alpha == 0, 1, ceiling(alpha*length(r)))
+  -1/n.tail * sum(r[which((1:length(r)) <= n.tail)])
+}

@@ -68,10 +68,10 @@ uneqhistMI <- function(dat.mat, saveReps=FALSE){
     resid.mat[(length(reg.dat$miss.val)+1):nrow(resid.mat), short.hist.var] <- reg.dat$err.mat[, short.hist.var]
   } ############# end of for loop (for each short history group)
   
-  risk.list <- constructPageData(fitted.xts, resid.mat, miss.hist.var, miss.itr, 
+  risk.list <- constructMIData(fitted.xts, resid.mat, miss.hist.var, miss.itr, 
                                  na_count, sReps=saveReps)
   
-  return(round(risk.list, digits = 3))
+  return(round(risk.list, digits = 4))
   
 }
 
@@ -116,10 +116,10 @@ fitValue <- function(short.hist.var, long.hist.var, ret.dat, num.miss){
 
 
 ############################ Page MI backfill ###############################
-constructPageData <- function(fitted.xts, resid.mat, miss.hist.var, miss.itr, na_count, sReps){
+constructMIData <- function(fitted.xts, resid.mat, miss.hist.var, miss.itr, na_count, sReps){
   
   # No. of bootstrap samples
-  M <- 100000
+  M <- 10000
   
   
   # Create an empty list
@@ -159,20 +159,19 @@ constructPageData <- function(fitted.xts, resid.mat, miss.hist.var, miss.itr, na
       num.miss <- length(miss.val)
       sample.indx <- which(!is.na(resid.mat[, short.hist.var[1]]))
       
-      boot.resid <- as.matrix(resid.mat[sample(sample.indx, size=num.miss, 
-                                               replace=TRUE), short.hist.var])
+      boot.resid <- as.matrix(resid.mat[sample(sample.indx, size=num.miss, replace=TRUE), short.hist.var])
       colnames(boot.resid) <- short.hist.var
-      fitted.xts[miss.val, short.hist.var] <- fitted.xts[miss.val, short.hist.var] + boot.resid[, short.hist.var]
+      boot.resid <- as.xts(boot.resid, order.by = index(fitted.xts)[miss.val])
+      fitted.xts[miss.val, short.hist.var] <- fitted.xts[miss.val, short.hist.var, drop=F] + boot.resid[, short.hist.var, drop=F]
     }
     
-    risk.mat["Skewness", ] <- moments::skewness(fitted.xts[, miss.hist.var])
-    risk.mat["Kurtosis", ] <- moments::kurtosis(fitted.xts[, miss.hist.var])
-    risk.mat["Mean", ] <- colMeans(fitted.xts[, miss.hist.var])
-    risk.mat["Volatility", ] <- apply(fitted.xts[, miss.hist.var], 2, sd)
-    risk.mat["Sharpe Ratio", ] <- apply(fitted.xts[, miss.hist.var], 2, SharpeRatio, 
-                                        FUN="StdDev")
-    risk.mat["Expected Shortfall", ] <- apply(fitted.xts[, miss.hist.var], 2, ES, 
-                                              p=0.95, method="historical")
+    risk.mat["Skewness", ] <- moments::skewness(fitted.xts[, miss.hist.var, drop=F])
+    risk.mat["Kurtosis", ] <- moments::kurtosis(fitted.xts[, miss.hist.var, drop=F])
+    risk.mat["Mean", ] <- colMeans(fitted.xts[, miss.hist.var, drop=F])
+    risk.mat["Volatility", ] <- apply(fitted.xts[, miss.hist.var, drop=F], 2, sd)
+    risk.mat["Sharpe Ratio", ] <- risk.mat["Mean", ] / risk.mat["Volatility", ]
+    #risk.mat["Sharpe Ratio", ] <- apply(fitted.xts[, miss.hist.var, drop=F], 2, SharpeRatio, FUN="StdDev")
+    risk.mat["Expected Shortfall", ] <- apply(fitted.xts[, miss.hist.var, drop=F], 2, Es)
     risk.metrics[[i]] <- risk.mat
     
     temp.skew[i, ] <- risk.mat["Skewness", ]  
@@ -196,4 +195,10 @@ constructPageData <- function(fitted.xts, resid.mat, miss.hist.var, miss.itr, na
     return(risk.vals)
 }
 
+# Expected Shortfall
+Es <- function(r, alpha = 0.05) {
+  r <- sort(r); mean <- mean(r)
+  n.tail <- ifelse( alpha == 0, 1, ceiling(alpha*length(r)))
+  -1/n.tail * sum(r[which((1:length(r)) <= n.tail)])
+}
 
