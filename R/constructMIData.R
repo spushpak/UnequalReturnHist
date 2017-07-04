@@ -54,7 +54,7 @@ constructMIData <- function(fitted.xts, resid.mat, miss.hist.var, miss.itr, na_c
     risk.mat["Volatility", ] <- apply(fitted.xts[, miss.hist.var, drop=F], 2, sd)
     risk.mat["Sharpe Ratio", ] <- risk.mat["Mean", ] / risk.mat["Volatility", ]
     #risk.mat["Sharpe Ratio", ] <- apply(fitted.xts[, miss.hist.var, drop=F], 2, SharpeRatio, FUN="StdDev")
-    risk.mat["Expected Shortfall", ] <- apply(fitted.xts[, miss.hist.var, drop=F], 2, Es)
+    risk.mat["Expected Shortfall", ] <- apply(fitted.xts[, miss.hist.var, drop=F], 2, expectedShortfall)
     
     risk.metrics[[i]] <- risk.mat
     

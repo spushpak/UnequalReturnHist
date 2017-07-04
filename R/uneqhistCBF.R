@@ -101,7 +101,7 @@ uneqhistCBF <- function(dat.mat, saveReps=FALSE){
     risk.mat["Volatility", ] <- apply(block.dat, 2, sd)
     risk.mat["Sharpe Ratio", ] <- risk.mat["Mean", ] / risk.mat["Volatility", ]
     #risk.mat["Sharpe Ratio", ] <- apply(block.dat, 2, SharpeRatio, FUN = "StdDev")
-    risk.mat["Expected Shortfall", ] <- apply(block.dat, 2, Es)
+    risk.mat["Expected Shortfall", ] <- apply(block.dat, 2, expectedShortfall)
     
     risk.metrics[[j+1]] <- risk.mat
   }
@@ -115,7 +115,7 @@ uneqhistCBF <- function(dat.mat, saveReps=FALSE){
   risk.vals["Volatility", ] <- apply(new.dat[, miss.hist.var, drop=F], 2, sd)
   risk.vals["Sharpe Ratio", ] <- risk.vals["Mean", ] / risk.vals["Volatility", ]
   #risk.vals["Sharpe Ratio", ] <- apply(new.dat[, miss.hist.var, drop=F], 2, SharpeRatio, FUN="StdDev")
-  risk.vals["Expected Shortfall", ] <- apply(new.dat[, miss.hist.var, drop=F], 2, Es) 
+  risk.vals["Expected Shortfall", ] <- apply(new.dat[, miss.hist.var, drop=F], 2, expectedShortfall) 
   
   
   
