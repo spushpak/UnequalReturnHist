@@ -4,13 +4,15 @@
 \alias{uneqhistMI}
 \title{Implements Multiple Imputation Method folowing Page(2013)}
 \usage{
-uneqhistMI(dat.mat, saveReps = FALSE)
+uneqhistMI(dat.mat, saveReps = FALSE, M = 100)
 }
 \arguments{
 \item{dat.mat}{is the returns data for multiple assets with unequal return history.}
 
 \item{saveReps}{is a logical flag, to indicate whether the risk measures
 need to be computed for all the replicates. Default is FALSE.}
+
+\item{M}{is the number of replicates for multiple imputation.}
 }
 \value{
 \item{risk.list}{A list or matrix containing risk measures for either the whole dataset or for each replicate.}
