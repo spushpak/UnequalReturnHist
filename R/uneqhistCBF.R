@@ -108,14 +108,12 @@ uneqhistCBF <- function(dat.mat, saveReps=FALSE){
   
   
   # Constrcut the risk matrix for the aggregate CBF data
-  
-  risk.vals["Skewness", ] <- moments::skewness(new.dat[, miss.hist.var, drop=F])
-  risk.vals["Kurtosis", ] <- moments::kurtosis(new.dat[, miss.hist.var, drop=F])
-  risk.vals["Mean", ] <- colMeans(new.dat[, miss.hist.var, drop=F])
-  risk.vals["Volatility", ] <- apply(new.dat[, miss.hist.var, drop=F], 2, sd)
-  risk.vals["Sharpe Ratio", ] <- risk.vals["Mean", ] / risk.vals["Volatility", ]
-  #risk.vals["Sharpe Ratio", ] <- apply(new.dat[, miss.hist.var, drop=F], 2, SharpeRatio, FUN="StdDev")
-  risk.vals["Expected Shortfall", ] <- apply(new.dat[, miss.hist.var, drop=F], 2, expectedShortfall) 
+  risk.vals["Skewness", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Skewness", TRUE)))
+  risk.vals["Kurtosis", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Kurtosis", TRUE)))
+  risk.vals["Mean", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Mean", TRUE)))
+  risk.vals["Volatility", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Volatility", TRUE)))
+  risk.vals["Sharpe Ratio", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Sharpe Ratio", TRUE)))
+  risk.vals["Expected Shortfall", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Expected Shortfall", TRUE)))
   
   
   

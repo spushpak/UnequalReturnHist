@@ -70,7 +70,7 @@ uneqhistMI <- function(dat.mat, saveReps=FALSE, M=100){
   } ############# end of for loop (for each short history group)
   
   risk.list <- constructMIData(fitted.xts, resid.mat, miss.hist.var, miss.itr, 
-                                 na_count, saveReps=saveReps)
+                                 na_count, saveReps=saveReps, M=M)
   
   return(round(risk.list, digits = 4))
   
