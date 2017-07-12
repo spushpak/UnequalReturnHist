@@ -63,60 +63,70 @@ uneqhistCBF <- function(dat.mat, saveReps=FALSE){
     temp.dat <- dat.xts[, c(long.hist.var, short.hist.var), drop=F]
     num.miss <- i
     reg.dat <- fitValue(short.hist.var, long.hist.var, temp.dat, num.miss)
-    new.dat <- constructCBFData(reg.dat, new.dat, full.length)  
+    
+    num.resid <- nrow(reg.dat$err.mat)
+    miss.val <- reg.dat$miss.val
+    err.mat <- reg.dat$err.mat
+    num.miss <- length(miss.val)
+    
+    # Stack the original block 'new.dat' equal to number of residual times
+    temp.newdat <- matrix(rep(t(coredata(new.dat)), num.resid), ncol= ncol(new.dat), 
+                          byrow=TRUE)
+    colnames(temp.newdat) <- colnames(new.dat)
+    
+    # Number of times the 'fitted.dat' i.e. short.hist.var should be repeated
+    rep.num <- nrow(temp.newdat)/full.length
+    temp.fitdat <- matrix(rep(t(coredata(reg.dat$fitted.dat)), rep.num), 
+                          ncol= ncol(reg.dat$fitted.dat), byrow=TRUE)
+    colnames(temp.fitdat) <- colnames(reg.dat$fitted.dat)
+    
+    # Merge the existing new.dat and fitted.dat
+    new.dat <- cbind(temp.newdat, temp.fitdat)
+    
+    # Crate the start index of each repeating block
+    rep.indx <- seq(from = miss.val[1]-1, by = nrow(new.dat)/num.resid, 
+                    length.out = num.resid)
+    
+    # Add the  respective residual to the fitted values of short history vars
+    for (m in 1:length(rep.indx)) {
+      for (n in 1:num.miss) {
+        new.dat[rep.indx[m]+n, short.hist.var] <- new.dat[rep.indx[m]+n, short.hist.var] + err.mat[m, short.hist.var]
+      }
+    }
+    
   } 
-  
   
   ######################################################################
   # Create the start index of each repeating block in the new dataset. Each repeating
-  # block has length equal to the row numbers of initial dataset.
+  # block has length equal to the row numbers of the initial dataset.
   row.grp <- seq(1, nrow(new.dat), by=full.length)
   
   # No. of repeatng blocks
   num.block <- nrow(new.dat)/full.length
   
-  # Create an empty list to contain risk measures of each repeating block
+  # Create an empty list to hold the risk and performance measures
   risk.metrics <- vector("list", num.block)
   
-  # Create an empty matrix to hold the aggregate risk measures of the CBF data 
-  risk.vals <- matrix(0, nrow=6, ncol=length(miss.hist.var),
-                      dimnames=list(c("Skewness", "Kurtosis", "Mean", "Volatility", "Sharpe Ratio", "Expected Shortfall"), miss.hist.var))
+  # Create an empty list to hold the weights of the GMV portfolio
+  #gmvport.wtlist <- vector("list", num.block)
   
-  
-  # Repeat the above step for each repeating block
+  # Do the following for each repeating block
   for (j in 0:(num.block-1)) {
-    risk.mat <- matrix(0, nrow=6, ncol=length(miss.hist.var),
-                       dimnames=list(c("Skewness", "Kurtosis", "Mean", "Volatility", "Sharpe Ratio", "Expected Shortfall"), miss.hist.var))
-    
+
     start.indx <- j*full.length+1  
     end.indx <- (j+1)*full.length
     
     # Extract the block based on start and end index    
-    block.dat <- new.dat[start.indx:end.indx, miss.hist.var, drop=F]
+    block.dat <- new.dat[start.indx:end.indx, , drop=F]
     
-    # Compute risk measures for the extracted block
-    risk.mat["Skewness", ] <- moments::skewness(block.dat)
-    risk.mat["Kurtosis", ] <- moments::kurtosis(block.dat)
-    risk.mat["Mean", ] <- colMeans(block.dat)
-    risk.mat["Volatility", ] <- apply(block.dat, 2, sd)
-    risk.mat["Sharpe Ratio", ] <- risk.mat["Mean", ] / risk.mat["Volatility", ]
-    #risk.mat["Sharpe Ratio", ] <- apply(block.dat, 2, SharpeRatio, FUN = "StdDev")
-    risk.mat["Expected Shortfall", ] <- apply(block.dat, 2, expectedShortfall)
-    
-    risk.metrics[[j+1]] <- risk.mat
+    # Compute risk and performance measures for the extracted block
+    risk.metrics[[j+1]] <- constructRiskStats(block.dat)
+    #gmvport.wtlist[[j+1]] <- constructGMVPortfolio(new.dat[start.indx:end.indx, , drop=F])
   }
   
   
-  # Constrcut the risk matrix for the aggregate CBF data
-  risk.vals["Skewness", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Skewness", TRUE)))
-  risk.vals["Kurtosis", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Kurtosis", TRUE)))
-  risk.vals["Mean", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Mean", TRUE)))
-  risk.vals["Volatility", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Volatility", TRUE)))
-  risk.vals["Sharpe Ratio", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Sharpe Ratio", TRUE)))
-  risk.vals["Expected Shortfall", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Expected Shortfall", TRUE)))
-  
-  
-  
+  risk.vals <-  Reduce("+", risk.metrics) / length(risk.metrics)  
+
   if(saveReps==TRUE) 
     return(round(risk.metrics, digits = 4)) 
   else 
