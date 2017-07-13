@@ -1,3 +1,11 @@
+rm(list = ls())
+
+library(xts)
+library(MASS)
+
+# Read all other functions in the UnequalReturnHist package into R's 
+# environment
+
 ccorMat = function(rho,p)
 {
   M1 = diag(,nrow = p)
@@ -19,8 +27,6 @@ cor2cov = function(R,vol)
 }
 
 
-library(xts)
-library(MASS)
 
 rho <- 0.6
 mu <- c(0.05, 0.075, 0.08, 0.015)
@@ -96,6 +102,7 @@ risk_GMVportfolio <- vector("list", M)
 # Create a list to hold the covariance of the assets for all replicates 
 cov_gmvport <- vector("list", M)
 
+port.retlist <- vector("list", M)
 
 # Bootstrap sampling - draw a random sample of size k (no. of missing obs) from 
 # (n-k) residuals with replacement. These k residuals are added to the k fitted 
@@ -121,7 +128,9 @@ for(i in 1:M){
   gmvport.wt <- constructGMVPortfolio(new.dat)
   colnames(gmvport.wt) <- "GMV_Portfolio_Wt"
   
-  risk_GMVportfolio[[i]] <- rbind(risk_metrics, t(gmvport.wt)) 
+  risk_GMVportfolio[[i]] <- rbind(risk.metrics, t(gmvport.wt))
+  port.retlist[[i]] <-  as.numeric(risk.metrics["Mean", ]%*%gmvport.wt)
+  
   cov_gmvport[[i]] <- cov(new.dat)
 }
 
@@ -152,3 +161,42 @@ avg.cov <- Reduce("+", cov_gmvport) / length(cov_gmvport)
 risk.GMVport
 avg.cov
 
+# GMV Portfolio weight and portfolio return
+# Portfolio weights are found for each replicate (Method 1)
+w_gmv1 <- as.matrix(risk.GMVport["GMV_Portfolio_Wt", ])
+portfolio.ret1 <- as.numeric(risk.GMVport["GMV_Portfolio_Wt", , drop=F]%*%t(risk.GMVport["Mean", , drop=F]))
+cat("Portfolio return: ", portfolio.ret1)
+
+# Portfolio return averaging over M portfolio returns in the list
+avg.portfolio.ret <- Reduce("+", port.retlist) / length(port.retlist)
+avg.portfolio.ret
+
+# Method 2
+inv.avg.cov <- solve(avg.cov)
+
+ones <- matrix(c(1, 1), nrow=ncol(dat.xts), ncol=1)
+numerator <- inv.avg.cov%*%ones
+denominator <- t(ones)%*%inv.avg.cov%*%ones
+w_gmv2 <- numerator / as.numeric(denominator)
+w_gmv2
+
+portfolio.ret2 <- as.numeric(risk.GMVport["Mean", , drop=F]%*%w_gmv2)
+portfolio.ret2
+
+# Method 3
+# Invert each cov matrix in the list
+inv.cov_gmvport <- lapply(cov_gmvport, solve)
+avg.inv.cov <- Reduce("+", inv.cov_gmvport) / length(inv.cov_gmvport)
+
+ones <- matrix(c(1, 1), nrow=ncol(dat.xts), ncol=1)
+numerator <- avg.inv.cov%*%ones
+denominator <- t(ones)%*%avg.inv.cov%*%ones
+w_gmv3 <- numerator / as.numeric(denominator)
+w_gmv3
+
+portfolio.ret3 <- as.numeric(risk.GMVport["Mean", , drop=F]%*%w_gmv3)
+portfolio.ret3
+
+# Three GMV weights from three methods
+cbind(w_gmv1, w_gmv2, w_gmv3)
+rbind(portfolio.ret1, avg.portfolio.ret, portfolio.ret2, portfolio.ret3)
