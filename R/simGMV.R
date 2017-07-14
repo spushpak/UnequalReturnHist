@@ -3,6 +3,12 @@ rm(list = ls())
 library(xts)
 library(MASS)
 
+source("C:/UW/RDev/UnequalReturnHist/R/fitValue.R")
+source("C:/UW/RDev/UnequalReturnHist/R/constructRiskStats.R")
+source("C:/UW/RDev/UnequalReturnHist/R/constructGMVPortfolio.R")
+source("C:/UW/RDev/UnequalReturnHist/R/expectedShortfall.R")
+
+
 # Read all other functions in the UnequalReturnHist package into R's 
 # environment
 
@@ -102,7 +108,7 @@ risk_GMVportfolio <- vector("list", M)
 # Create a list to hold the covariance of the assets for all replicates 
 cov_gmvport <- vector("list", M)
 
-port.retlist <- vector("list", M)
+portfolio.stats <- vector("list", M)
 
 # Bootstrap sampling - draw a random sample of size k (no. of missing obs) from 
 # (n-k) residuals with replacement. These k residuals are added to the k fitted 
@@ -129,9 +135,11 @@ for(i in 1:M){
   colnames(gmvport.wt) <- "GMV_Portfolio_Wt"
   
   risk_GMVportfolio[[i]] <- rbind(risk.metrics, t(gmvport.wt))
-  port.retlist[[i]] <-  as.numeric(risk.metrics["Mean", ]%*%gmvport.wt)
-  
   cov_gmvport[[i]] <- cov(new.dat)
+  port.ret <-  as.numeric(risk.metrics["Mean", ]%*%gmvport.wt)
+  port.sd <- sqrt(as.numeric(t(gmvport.wt)%*%cov(new.dat)%*%gmvport.wt))
+  port.sharpeRatio <- port.ret / port.sd
+  portfolio.stats[[i]] <-  rbind(port.ret, port.sd, port.sharpeRatio)
 }
 
 # # Create a matrix to hold the aggregate risk and performance measures
@@ -156,20 +164,29 @@ for(i in 1:M){
 
 risk.GMVport <-  Reduce("+", risk_GMVportfolio) / length(risk_GMVportfolio)
 avg.cov <- Reduce("+", cov_gmvport) / length(cov_gmvport)
-
+avg.portfolio.stats <- Reduce("+", portfolio.stats ) / length(portfolio.stats)
 
 risk.GMVport
 avg.cov
+avg.portfolio.stats
 
 # GMV Portfolio weight and portfolio return
 # Portfolio weights are found for each replicate (Method 1)
 w_gmv1 <- as.matrix(risk.GMVport["GMV_Portfolio_Wt", ])
-portfolio.ret1 <- as.numeric(risk.GMVport["GMV_Portfolio_Wt", , drop=F]%*%t(risk.GMVport["Mean", , drop=F]))
-cat("Portfolio return: ", portfolio.ret1)
 
 # Portfolio return averaging over M portfolio returns in the list
-avg.portfolio.ret <- Reduce("+", port.retlist) / length(port.retlist)
-avg.portfolio.ret
+portfolio.ret1 <- as.numeric(avg.portfolio.stats["port.ret", ])
+portfolio.ret1
+
+portfolio.sd1 <- as.numeric(avg.portfolio.stats["port.sd", ])
+portfolio.sd1
+
+portfolio.SR1 <- portfolio.ret1 / portfolio.sd1
+portfolio.SR1
+
+# Using average of the portfolio vector and average of the mean return vector
+#avg.portfolio.ret <- as.numeric(risk.GMVport["GMV_Portfolio_Wt", , drop=F]%*%t(risk.GMVport["Mean", , drop=F]))
+#avg.portfolio.ret
 
 # Method 2
 inv.avg.cov <- solve(avg.cov)
@@ -180,8 +197,15 @@ denominator <- t(ones)%*%inv.avg.cov%*%ones
 w_gmv2 <- numerator / as.numeric(denominator)
 w_gmv2
 
+# Using the average of the mean return vector and the portfolio vector
 portfolio.ret2 <- as.numeric(risk.GMVport["Mean", , drop=F]%*%w_gmv2)
 portfolio.ret2
+
+portfolio.sd2 <- sqrt(as.numeric(t(w_gmv2)%*%avg.cov%*%w_gmv2))
+portfolio.sd2
+
+portfolio.SR2 <- portfolio.ret2 / portfolio.sd2
+portfolio.SR2
 
 # Method 3
 # Invert each cov matrix in the list
@@ -194,9 +218,28 @@ denominator <- t(ones)%*%avg.inv.cov%*%ones
 w_gmv3 <- numerator / as.numeric(denominator)
 w_gmv3
 
+# Using the average of the mean return vector and the portfolio vector
 portfolio.ret3 <- as.numeric(risk.GMVport["Mean", , drop=F]%*%w_gmv3)
 portfolio.ret3
 
+portfolio.sd3 <- sqrt(as.numeric(t(w_gmv3)%*%solve(avg.inv.cov)%*%w_gmv3))
+portfolio.sd3
+
+portfolio.SR3 <- portfolio.ret3 / portfolio.sd3
+portfolio.SR3
+
+
 # Three GMV weights from three methods
 cbind(w_gmv1, w_gmv2, w_gmv3)
-rbind(portfolio.ret1, avg.portfolio.ret, portfolio.ret2, portfolio.ret3)
+port.returns <- rbind(portfolio.ret1, portfolio.ret2, portfolio.ret3)
+row.names(port.returns) <- c("Method 1", "Method 2", "Method 3")
+
+port.sds <- rbind(portfolio.sd1, portfolio.sd2, portfolio.sd3)
+row.names(port.returns) <- c("Method 1", "Method 2", "Method 3")
+
+port.SRs <- rbind(portfolio.SR1, portfolio.SR2, portfolio.SR3)
+row.names(port.returns) <- c("Method 1", "Method 2", "Method 3")
+
+comparison.mat <- cbind(port.returns, port.sds, port.SRs)
+colnames(comparison.mat) <- c("Return", "Std Dev", "Sharpe Ratio")
+comparison.mat
