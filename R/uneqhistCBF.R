@@ -93,7 +93,6 @@ uneqhistCBF <- function(dat.mat, saveReps=FALSE){
         new.dat[rep.indx[m]+n, short.hist.var] <- new.dat[rep.indx[m]+n, short.hist.var] + err.mat[m, short.hist.var]
       }
     }
-    
   } 
   
   ######################################################################

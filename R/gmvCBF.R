@@ -34,19 +34,21 @@ cor2cov = function(R,vol)
 
 
 
-rho <- 0.6
-mu <- c(0.05, 0.075, 0.08, 0.015)
+rho <- 0.4
+mu <- c(0.01, 0.007, 0.008, 0.015)
 vol <- c(0.057, 0.086, 0.072, 0.043)
 
-cor.mat <- ccorMat(0.6, 4)
+cor.mat <- ccorMat(rho, 4)
 cov.mat <- cor2cov(cor.mat, vol)
 
+set.seed(1)
 ret.dat <- mvrnorm(n=60, mu, cov.mat)
 colnames(ret.dat) <- c("V1","V2", "V3", "V4")
 
 ## date sequence by month
 date <- as.character(seq(as.Date("2000/1/1"), by = "month", length.out = 60))
 dat.xts <- xts(ret.dat, order.by = as.Date(date))
+full.data <- dat.xts
 
 v2.v3.missing <- dat.xts['2000-01-01::2000-12-01', c("V2", "V3")]
 v4.missing <- dat.xts['2000-01-01::2001-12-01', "V4"]
@@ -54,9 +56,6 @@ v4.missing <- dat.xts['2000-01-01::2001-12-01', "V4"]
 dat.xts['2000-01-01::2000-12-01', c("V2", "V3")] <- NA
 dat.xts['2000-01-01::2001-12-01', "V4"] <- NA
 
-# Keep a copy of original data - will be updated with fitted values for the
-# missing portion
-fitted.xts <- dat.xts 
 
 # Find which columns have 'NA' values; so these columns have shorter histtory
 miss.hist.var <- colnames(dat.xts)[apply(dat.xts, 2, anyNA)]
@@ -81,8 +80,7 @@ miss.itr <- sort(unique(na_count[,"num.miss"]))
 # Full length of the dataset
 full.length <- nrow(dat.xts)
 
-resid.mat <- matrix(NA, nrow = full.length, ncol = length(miss.hist.var))
-colnames(resid.mat) <- miss.hist.var
+new.dat <- dat.xts[, long.hist.var]
 
 # Start with the short history columns which have the smallest number of 
 # observations missing i.e. this group is the longest short history group. Then 
@@ -93,74 +91,82 @@ for (i in miss.itr) {
   num.miss <- i
   reg.dat <- fitValue(short.hist.var, long.hist.var, temp.dat, num.miss)
   
-  fitted.xts[reg.dat$miss.val, short.hist.var] <- reg.dat$fitted.dat[reg.dat$miss.val, short.hist.var]
-  resid.mat[(length(reg.dat$miss.val)+1):nrow(resid.mat), short.hist.var] <- reg.dat$err.mat[, short.hist.var]
-} ############# end of for loop (for each short history group)
+  num.resid <- nrow(reg.dat$err.mat)
+  miss.val <- reg.dat$miss.val
+  err.mat <- reg.dat$err.mat
+  num.miss <- length(miss.val)
+  
+  # Stack the original block 'new.dat' equal to number of residual times
+  temp.newdat <- matrix(rep(t(coredata(new.dat)), num.resid), ncol= ncol(new.dat), 
+                        byrow=TRUE)
+  colnames(temp.newdat) <- colnames(new.dat)
+  
+  # Number of times the 'fitted.dat' i.e. short.hist.var should be repeated
+  rep.num <- nrow(temp.newdat)/full.length
+  temp.fitdat <- matrix(rep(t(coredata(reg.dat$fitted.dat)), rep.num), 
+                        ncol= ncol(reg.dat$fitted.dat), byrow=TRUE)
+  colnames(temp.fitdat) <- colnames(reg.dat$fitted.dat)
+  
+  # Merge the existing new.dat and fitted.dat
+  new.dat <- cbind(temp.newdat, temp.fitdat)
+  
+  # Crate the start index of each repeating block
+  rep.indx <- seq(from = miss.val[1]-1, by = nrow(new.dat)/num.resid, 
+                  length.out = num.resid)
+  
+  # Add the  respective residual to the fitted values of short history vars
+  for (m in 1:length(rep.indx)) {
+    for (n in 1:num.miss) {
+      new.dat[rep.indx[m]+n, short.hist.var] <- new.dat[rep.indx[m]+n, short.hist.var] + err.mat[m, short.hist.var]
+    }
+  }
+} 
 
-# No. of bootstrap samples
-M <- 1000
 
-new.dat <- fitted.xts
+######################################################################
+# Create the start index of each repeating block in the new dataset. Each repeating
+# block has length equal to the row numbers of the initial dataset.
+row.grp <- seq(1, nrow(new.dat), by=full.length)
+
+# No. of repeatng blocks
+num.block <- nrow(new.dat)/full.length
 
 # Create a list to hold the risk and performance measures
-risk_GMVportfolio <- vector("list", M)
+risk_GMVportfolio <- vector("list", num.block)
 
 # Create a list to hold the covariance of the assets for all replicates 
-cov_gmvport <- vector("list", M)
+cov_gmvport <- vector("list", num.block)
 
-portfolio.stats <- vector("list", M)
+portfolio.stats <- vector("list", num.block)
 
-# Bootstrap sampling - draw a random sample of size k (no. of missing obs) from 
-# (n-k) residuals with replacement. These k residuals are added to the k fitted 
-# values.
-for(i in 1:M){
-  for (j in miss.itr) {
-    short.hist.var <- rownames(na_count)[na_count[, "num.miss"]==j]
-    miss.val <- which(is.na(resid.mat[, short.hist.var[1]]))
-    num.miss <- length(miss.val)
-    sample.indx <- which(!is.na(resid.mat[, short.hist.var[1]]))
-    
-    r.sample <- sample(sample.indx, size=num.miss, replace=TRUE)
-    boot.resid <- resid.mat[r.sample, short.hist.var, drop=F]
-    colnames(boot.resid) <- short.hist.var
-    boot.resid <- as.xts(boot.resid, order.by = index(fitted.xts)[miss.val])
-    new.dat[miss.val, short.hist.var] <- fitted.xts[miss.val, short.hist.var, drop=F] + boot.resid[, short.hist.var, drop=F]
-  }
+
+# Create an empty list to hold the weights of the GMV portfolio
+#gmvport.wtlist <- vector("list", num.block)
+
+# Do the following for each repeating block
+for (j in 0:(num.block-1)) {
   
-  #block.dat <- new.dat[, miss.hist.var, drop=F]
-  #risk.metrics[[i]] <- constructRiskStats(block.dat, miss.hist.var)
+  start.indx <- j*full.length+1  
+  end.indx <- (j+1)*full.length
   
-  risk.metrics <- constructRiskStats(new.dat)
-  gmvport.wt <- constructGMVPortfolio(new.dat)
+  # Extract the block based on start and end index    
+  block.dat <- new.dat[start.indx:end.indx, , drop=F]
+  
+  # Compute risk and performance measures for the extracted block
+  risk.metrics <- constructRiskStats(block.dat)
+  gmvport.wt <- constructGMVPortfolio(block.dat)
   colnames(gmvport.wt) <- "GMV_Portfolio_Wt"
   
-  risk_GMVportfolio[[i]] <- rbind(risk.metrics, t(gmvport.wt))
-  cov_gmvport[[i]] <- cov(new.dat)
+  risk_GMVportfolio[[j+1]] <- rbind(risk.metrics, t(gmvport.wt))
+  cov_gmvport[[j+1]] <- cov(block.dat)
   port.ret <-  as.numeric(risk.metrics["Mean", ]%*%gmvport.wt)
-  port.sd <- sqrt(as.numeric(t(gmvport.wt)%*%cov(new.dat)%*%gmvport.wt))
+  port.sd <- sqrt(as.numeric(t(gmvport.wt)%*%cov(block.dat)%*%gmvport.wt))
   port.sharpeRatio <- port.ret / port.sd
-  portfolio.stats[[i]] <-  rbind(port.ret, port.sd, port.sharpeRatio)
+  portfolio.stats[[j+1]] <-  rbind(port.ret, port.sd, port.sharpeRatio)
 }
 
-# # Create a matrix to hold the aggregate risk and performance measures
-# risk.vals <- matrix(0, nrow=6, ncol=length(miss.hist.var),
-#                     dimnames=list(c("Skewness", "Kurtosis", "Mean", "Volatility", "Sharpe Ratio", "Expected Shortfall"), miss.hist.var))
-# 
-# risk.vals["Skewness", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Skewness", TRUE)))
-# risk.vals["Kurtosis", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Kurtosis", TRUE)))
-# risk.vals["Mean", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Mean", TRUE)))
-# risk.vals["Volatility", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Volatility", TRUE)))
-# risk.vals["Sharpe Ratio", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Sharpe Ratio", TRUE)))
-# risk.vals["Expected Shortfall", ] <- colMeans(do.call("rbind", lapply(risk.metrics, "[", "Expected Shortfall", TRUE)))
-# 
-# 
-# # Create an empty matrix to hold the GMV portfolio weigths
-# # aggregating over all the replicates
-# portfolio.vals <- matrix(0, nrow=ncol(new.dat), ncol=1,
-#                          dimnames=list(colnames(new.dat), "Portfolio weights"))
-# 
-# portfolio.vals <- colMeans(do.call("rbind", lapply(gmvport.wtlist, "[", TRUE, TRUE)))
 
+risk.vals <-  Reduce("+", risk.metrics) / length(risk.metrics)  
 
 risk.GMVport <-  Reduce("+", risk_GMVportfolio) / length(risk_GMVportfolio)
 avg.cov <- Reduce("+", cov_gmvport) / length(cov_gmvport)
@@ -228,17 +234,30 @@ portfolio.sd3
 portfolio.SR3 <- portfolio.ret3 / portfolio.sd3
 portfolio.SR3
 
+# For the full dataset
+w_gmv4 <- constructGMVPortfolio(full.data)
+w_gmv4
+
+portfolio.ret4 <- as.numeric(colMeans(full.data)%*%w_gmv4)
+portfolio.ret4
+
+portfolio.sd4 <- sqrt(as.numeric(t(w_gmv4)%*%cov(full.data)%*%w_gmv4))
+portfolio.sd4
+
+portfolio.SR4 <- portfolio.ret4 / portfolio.sd4
+portfolio.SR4
+
 
 # Three GMV weights from three methods
-cbind(w_gmv1, w_gmv2, w_gmv3)
-port.returns <- rbind(portfolio.ret1, portfolio.ret2, portfolio.ret3)
-row.names(port.returns) <- c("Method 1", "Method 2", "Method 3")
+cbind(w_gmv1, w_gmv2, w_gmv3, w_gmv4)
+port.returns <- rbind(portfolio.ret1, portfolio.ret2, portfolio.ret3, portfolio.ret4)
+row.names(port.returns) <- c("Method 1", "Method 2", "Method 3", "Original Data")
 
-port.sds <- rbind(portfolio.sd1, portfolio.sd2, portfolio.sd3)
-row.names(port.returns) <- c("Method 1", "Method 2", "Method 3")
+port.sds <- rbind(portfolio.sd1, portfolio.sd2, portfolio.sd3, portfolio.sd4)
+row.names(port.returns) <- c("Method 1", "Method 2", "Method 3", "Original Data")
 
-port.SRs <- rbind(portfolio.SR1, portfolio.SR2, portfolio.SR3)
-row.names(port.returns) <- c("Method 1", "Method 2", "Method 3")
+port.SRs <- rbind(portfolio.SR1, portfolio.SR2, portfolio.SR3, portfolio.SR4)
+row.names(port.returns) <- c("Method 1", "Method 2", "Method 3", "Original Data")
 
 comparison.mat <- cbind(port.returns, port.sds, port.SRs)
 colnames(comparison.mat) <- c("Return", "Std Dev", "Sharpe Ratio")
