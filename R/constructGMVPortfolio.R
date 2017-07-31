@@ -1,12 +1,12 @@
-constructGMVPortfolio <- function(ret.dat) {
+constructGMVPortfolio <- function(ret_dat) {
 
-  ones <- matrix(c(1, 1), nrow=ncol(ret.dat), ncol=1)
+  ones <- matrix(rep(1, ncol(ret_dat)), nrow=ncol(ret_dat), ncol=1)
   
-  sigma.mat <- cov(na.omit(ret.dat))
-  #cor.mat <- cor(na.omit(ret.dat))
+  sigma_mat <- cov(na.omit(ret_dat))
+  #cor_mat <- cor(na.omit(ret_dat))
   
-  numerator <- solve(sigma.mat)%*%ones
-  denominator <- (t(ones)%*%solve(sigma.mat))%*%ones
+  numerator <- solve(sigma_mat)%*%ones
+  denominator <- (t(ones)%*%solve(sigma_mat))%*%ones
   
   w_gmv <- numerator / as.numeric(denominator)
   

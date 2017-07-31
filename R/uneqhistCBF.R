@@ -6,15 +6,16 @@
 #' @importFrom moments skewness kurtosis
 #' @importFrom stats as.formula coef lm resid sd
 #' 
-#' @param dat.mat is the returns data for multiple assets with unequal return history.
-#' @param saveReps is a logical flag, to indicate whether the risk measures  
-#' need to be computed for all the replicates. Default is FALSE.
+#' @param dat_mat is the returns data for multiple assets with unequal return history.
+#' @param gmvPortfolio is a logical flag, to indicate whether the Global Minimum Variance (GMV) 
+#' portfolio such as portfolio weights, portfolio reurn, portfolio standard
+#' deviation, portfolio sharpe ratio need to be computed. Default is FALSE.
+#' 
 #' 
 #' @return
-#' \item{risk.metrics}{A list containing a matrix of risk measures for each replicate.}
-#' \item{risk.vals}{A matrix of risk measures for the whole combined backfilled dataset.}
+#' \item{risk_metrics}{A matrix of risk measures for the whole combined backfilled dataset.}
+#' \item{output}{A list containing the matrix of risk measures for the whole combined backfilled dataset and the Global Minimum Variance portfolio weights, portfolio return, portfolio standard deviation, portfolio sharpe ratio}
 #' 
-#'
 #'    
 #' @author Pushpak Sarkar
 #' 
@@ -22,112 +23,106 @@
 #' @rdname uneqhistCBF
 #' @export
 
-uneqhistCBF <- function(dat.mat, saveReps=FALSE){
+uneqhistCBF <- function(dat_mat, FUN){
   
   # Convert the data to xts object (probably it's not necessary)
-  dat.xts <- xts(dat.mat[, -1], order.by = as.Date(dat.mat[, 1], "%m/%d/%Y"))
+  dat_xts <- xts(dat_mat[, -1], order.by = as.Date(dat_mat[, 1], "%m/%d/%Y"))
   
-  # Keep a copy of original data
-  #old.xts <- dat.xts 
+  # Keep a copy of original data - will be updated with fitted values for the
+  # missing portion
+  fitted_xts <- dat_xts 
   
   # Find which columns have 'NA' values; so these columns have shorter histtory
-  miss.hist.var <- colnames(dat.xts)[apply(dat.xts, 2, anyNA)]
+  miss_hist_var <- colnames(dat_xts)[apply(dat_xts, 2, anyNA)]
   
   # Find which column has full history
-  long.hist.var <- setdiff(colnames(dat.xts), miss.hist.var)
+  long_hist_var <- setdiff(colnames(dat_xts), miss_hist_var)
   
   # Find how many observatins are missing for each short history columns
-  na_count <- apply(dat.xts, 2, function(x) sum(is.na(x)))
+  na_count <- apply(dat_xts, 2, function(x) sum(is.na(x)))
   na_count <- as.matrix(na_count)
-  colnames(na_count) <- "num.miss"
+  colnames(na_count) <- "numberMissing"
   
   # Alternative way to find the full history column
-  #long.hist.var <- rownames(na_count)[na_count[, "num.miss"]==0]
+  #long_hist_var <- rownames(na_count)[na_count[, "numberMissing"]==0]
   
   # Drop full history group from 'na_count' as 'NA' count for this group is zero
-  na_count <- na_count[miss.hist.var, "num.miss", drop=F]
+  na_count <- na_count[miss_hist_var, "numberMissing", drop=F]
   
   # Sort count of missing obs from smallest to largest
-  miss.itr <- sort(unique(na_count[,"num.miss"]))
+  miss_itr <- sort(unique(na_count[,"numberMissing"]))
   
   # Full length of the dataset
-  full.length <- nrow(dat.xts)
+  full_length <- nrow(dat_xts)
   
-  new.dat <- dat.xts[, long.hist.var]
+  new_dat <- dat_xts[, long_hist_var]
   
   # Start with the short history columns which have the smallest number of 
   # observations missing i.e. this group is the longest short history group. Then 
   # move on to the next shorter history group and so on.
-  for (i in miss.itr) {
-    short.hist.var <- rownames(na_count)[na_count[, "num.miss"]==i]
-    temp.dat <- dat.xts[, c(long.hist.var, short.hist.var), drop=F]
-    num.miss <- i
-    reg.dat <- fitValue(short.hist.var, long.hist.var, temp.dat, num.miss)
+  for (i in miss_itr) {
+    dep_var <- rownames(na_count)[na_count[, "numberMissing"]==i]
+    indep_var <- rownames(na_count)[na_count[, "numberMissing"] < i]
+    indep_var <- c(long_hist_var, indep_var)
+    temp_dat <- fitted_xts[, c(indep_var, dep_var), drop=F]
+    num_miss <- i
+    reg_dat <- fitValue(dep_var, indep_var, temp_dat, num_miss)
+    fitted_xts[reg_dat$miss_val, dep_var] <- reg_dat$fitted_dat[reg_dat$miss_val, dep_var]
     
-    num.resid <- nrow(reg.dat$err.mat)
-    miss.val <- reg.dat$miss.val
-    err.mat <- reg.dat$err.mat
-    num.miss <- length(miss.val)
+    num_resid <- nrow(reg_dat$err_mat)
+    miss_val <- reg_dat$miss_val
+    err_mat <- reg_dat$err_mat
+    num_miss <- length(miss_val)
     
-    # Stack the original block 'new.dat' equal to number of residual times
-    temp.newdat <- matrix(rep(t(coredata(new.dat)), num.resid), ncol= ncol(new.dat), 
+    # Stack the original block 'new_dat' equal to number of residual times
+    temp_newdat <- matrix(rep(t(coredata(new_dat)), num_resid), ncol= ncol(new_dat), 
                           byrow=TRUE)
-    colnames(temp.newdat) <- colnames(new.dat)
+    colnames(temp_newdat) <- colnames(new_dat)
     
-    # Number of times the 'fitted.dat' i.e. short.hist.var should be repeated
-    rep.num <- nrow(temp.newdat)/full.length
-    temp.fitdat <- matrix(rep(t(coredata(reg.dat$fitted.dat)), rep.num), 
-                          ncol= ncol(reg.dat$fitted.dat), byrow=TRUE)
-    colnames(temp.fitdat) <- colnames(reg.dat$fitted.dat)
+    # Number of times the 'fitted_dat' i.e. short_hist_var should be repeated
+    rep_num <- nrow(temp_newdat)/full_length
+    temp_fitdat <- matrix(rep(t(coredata(reg_dat$fitted_dat)), rep_num), 
+                          ncol= ncol(reg_dat$fitted_dat), byrow=TRUE)
+    colnames(temp_fitdat) <- colnames(reg_dat$fitted_dat)
     
-    # Merge the existing new.dat and fitted.dat
-    new.dat <- cbind(temp.newdat, temp.fitdat)
+    # Merge the existing new_dat and fitted_dat
+    new_dat <- cbind(temp_newdat, temp_fitdat)
     
     # Crate the start index of each repeating block
-    rep.indx <- seq(from = miss.val[1]-1, by = nrow(new.dat)/num.resid, 
-                    length.out = num.resid)
+    rep_indx <- seq(from = miss_val[1]-1, by = nrow(new_dat)/num_resid, 
+                    length.out = num_resid)
     
     # Add the  respective residual to the fitted values of short history vars
-    for (m in 1:length(rep.indx)) {
-      for (n in 1:num.miss) {
-        new.dat[rep.indx[m]+n, short.hist.var] <- new.dat[rep.indx[m]+n, short.hist.var] + err.mat[m, short.hist.var]
+    for (m in 1:length(rep_indx)) {
+      for (n in 1:num_miss) {
+        new_dat[rep_indx[m]+n, dep_var] <- new_dat[rep_indx[m]+n, dep_var] + err_mat[m, dep_var]
       }
     }
   } 
   
-  ######################################################################
-  # Create the start index of each repeating block in the new dataset. Each repeating
-  # block has length equal to the row numbers of the initial dataset.
-  row.grp <- seq(1, nrow(new.dat), by=full.length)
-  
-  # No. of repeatng blocks
-  num.block <- nrow(new.dat)/full.length
-  
-  # Create an empty list to hold the risk and performance measures
-  risk.metrics <- vector("list", num.block)
-  
-  # Create an empty list to hold the weights of the GMV portfolio
-  #gmvport.wtlist <- vector("list", num.block)
-  
-  # Do the following for each repeating block
-  for (j in 0:(num.block-1)) {
-
-    start.indx <- j*full.length+1  
-    end.indx <- (j+1)*full.length
+######################################################################
+  risk_metrics <- constructRiskStats(new_dat)  
+   
+  if (FUN == "gmvPortfolio") {
+    w_gmv <- constructGMVPortfolio(new_dat)
+    colnames(w_gmv) <- "portfolio_wts"
     
-    # Extract the block based on start and end index    
-    block.dat <- new.dat[start.indx:end.indx, , drop=F]
+    portfolio_ret <-  as.numeric(risk_metrics["Mean", ]%*%w_gmv)
+    portfolio_sd <- sqrt(as.numeric(t(w_gmv)%*%cov(new_dat)%*%w_gmv))
+    portfolio_SR <- portfolio_ret / portfolio_sd
     
-    # Compute risk and performance measures for the extracted block
-    risk.metrics[[j+1]] <- constructRiskStats(block.dat)
-    #gmvport.wtlist[[j+1]] <- constructGMVPortfolio(new.dat[start.indx:end.indx, , drop=F])
-  }
+    portfolio_stats <- cbind(portfolio_ret, portfolio_sd, portfolio_SR)
+    colnames(portfolio_stats) <- c("Return", "Std Dev", "Sharpe Ratio")
+    row.names(portfolio_stats) <- "CBF"
+    
+    gmvPortfolio_list <- list("Portfolio_Weights" = w_gmv, 
+                              "Portfolio_Stats" = portfolio_stats)
+  }  
   
-  
-  risk.vals <-  Reduce("+", risk.metrics) / length(risk.metrics)  
-
-  if(saveReps==TRUE) 
-    return(round(risk.metrics, digits = 4)) 
-  else 
-    return(round(risk.vals, digits = 4))
+  if(FUN == "gmvPortfolio") 
+    return(gmvPortfolio_list) 
+  else if(FUN == "riskMeasures")
+    return(risk_metrics)
+  else
+    return("Not a valid function name.")
 }

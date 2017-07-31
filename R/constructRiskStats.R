@@ -1,17 +1,17 @@
-constructRiskStats <- function(block.dat){
-  risk.mat <- matrix(0, nrow=6, ncol=ncol(block.dat))
-  row.names(risk.mat) <- c("Skewness", "Kurtosis", "Mean", "Volatility", 
+constructRiskStats <- function(block_dat){
+  risk_mat <- matrix(0, nrow=6, ncol=ncol(block_dat))
+  row.names(risk_mat) <- c("Skewness", "Kurtosis", "Mean", "Volatility", 
                            "Sharpe Ratio", "Expected Shortfall")
-  colnames(risk.mat) <- colnames(block.dat)
+  colnames(risk_mat) <- colnames(block_dat)
                      
   # Compute the risk and performance measures
-  risk.mat["Skewness", ] <- moments::skewness(block.dat)
-  risk.mat["Kurtosis", ] <- moments::kurtosis(block.dat)
-  risk.mat["Mean", ] <- colMeans(block.dat)
-  risk.mat["Volatility", ] <- apply(block.dat, 2, sd)
-  risk.mat["Sharpe Ratio", ] <- risk.mat["Mean", ] / risk.mat["Volatility", ]
-  #risk.mat["Sharpe Ratio", ] <- apply(block.dat, 2, SharpeRatio, FUN="StdDev")
-  risk.mat["Expected Shortfall", ] <- apply(block.dat, 2, expectedShortfall)
+  risk_mat["Skewness", ] <- moments::skewness(block_dat)
+  risk_mat["Kurtosis", ] <- moments::kurtosis(block_dat)
+  risk_mat["Mean", ] <- colMeans(block_dat)
+  risk_mat["Volatility", ] <- apply(block_dat, 2, sd)
+  risk_mat["Sharpe Ratio", ] <- risk_mat["Mean", ] / risk_mat["Volatility", ]
+  #risk_mat["Sharpe Ratio", ] <- apply(block_dat, 2, SharpeRatio, FUN="StdDev")
+  risk_mat["Expected Shortfall", ] <- apply(block_dat, 2, expectedShortfall)
   
-  return(risk.mat)
+  return(risk_mat)
 }

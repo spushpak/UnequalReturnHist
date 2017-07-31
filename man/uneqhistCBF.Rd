@@ -4,17 +4,18 @@
 \alias{uneqhistCBF}
 \title{Implements Combined Backfill for Multiple Asset Groups}
 \usage{
-uneqhistCBF(dat.mat, saveReps = FALSE)
+uneqhistCBF(dat_mat, gmvPortfolio = FALSE)
 }
 \arguments{
-\item{dat.mat}{is the returns data for multiple assets with unequal return history.}
+\item{dat_mat}{is the returns data for multiple assets with unequal return history.}
 
-\item{saveReps}{is a logical flag, to indicate whether the risk measures
-need to be computed for all the replicates. Default is FALSE.}
+\item{gmvPortfolio}{is a logical flag, to indicate whether the Global Minimum Variance (GMV) 
+portfolio such as portfolio weights, portfolio reurn, portfolio standard
+deviation, portfolio sharpe ratio need to be computed. Default is FALSE.}
 }
 \value{
-\item{risk.metrics}{A list containing a matrix of risk measures for each replicate.}
-\item{risk.vals}{A matrix of risk measures for the whole combined backfilled dataset.}
+\item{risk_metrics}{A matrix of risk measures for the whole combined backfilled dataset.}
+\item{output}{A list containing the matrix of risk measures for the whole combined backfilled dataset and the Global Minimum Variance portfolio weights, portfolio return, portfolio standard deviation, portfolio sharpe ratio}
 }
 \description{
 This function implements Combined Backfill for Multiple Asset Groups
