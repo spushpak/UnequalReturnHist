@@ -4,18 +4,34 @@
 \alias{uneqhistMI}
 \title{Implements Multiple Imputation Method folowing Page(2013)}
 \usage{
-uneqhistMI(dat_mat, saveReps = FALSE, M = 100)
+uneqhistMI(dat_mat, FUN, M = 100, saveReps = FALSE)
 }
 \arguments{
 \item{dat_mat}{is the returns data for multiple assets with unequal return history.}
 
-\item{saveReps}{is a logical flag, to indicate whether the risk measures
-need to be computed for all the replicates. Default is FALSE.}
+\item{FUN}{indicates whether risk measures or the Global Minimum Variance (GMV) 
+portfolio statistics such as portfolio weights, portfolio reurn, portfolio standard
+deviation, portfolio sharpe ratio need to be computed. Two possible values
+are "riskMeasures" and "gmvPortfolio".}
 
-\item{M}{is the number of replicates for multiple imputation.}
+\item{M}{is the number of replicates for multiple imputation. Default is 100.}
+
+\item{saveReps}{is a logical flag, to indicate whether the risk measures
+and GMV portfolio statistics need to be computed for all the replicates. Default is FALSE.}
 }
 \value{
-\item{risk_list}{A list or matrix containing risk measures for either the whole dataset or for each replicate.}
+Based on the value of the FUN argument the function either returns the risk 
+measures or the GMV portfolio statistics. If saveReps = TRUE, risk measures or 
+GMV portfolio statistics are returned for each replicate else the average over all
+the replicates are returned. 
+\item{risk_metrics}{If FUN = "riskMeasures" and saveReps = TRUE, a list 
+ of length M containing risk measures for each replicate are returned.}
+\item{risk_vals}{If FUN = "riskMeasures" and saveReps = FALSE, a matrix 
+ containing average of the risk measures over all replicates are returned.}
+\item{gmvPortfolio_list}{If FUN = "gmvPortfolio" and saveReps = TRUE, a list 
+ of length M containing GMV portfolio statistics for each replicate are retruned.}
+\item{gmvPortfolio}{If FUN = "gmvPortfolio" and saveReps = FALSE, a list 
+ containing average of the GMV portfolio statistics over all replicates are returned.}
 }
 \description{
 This function implements Multiple Imputation Method folowing 

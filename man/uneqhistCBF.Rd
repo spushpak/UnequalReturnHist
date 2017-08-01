@@ -4,18 +4,21 @@
 \alias{uneqhistCBF}
 \title{Implements Combined Backfill for Multiple Asset Groups}
 \usage{
-uneqhistCBF(dat_mat, gmvPortfolio = FALSE)
+uneqhistCBF(dat_mat, FUN)
 }
 \arguments{
-\item{dat_mat}{is the returns data for multiple assets with unequal return history.}
+\item{dat_mat}{returns data for multiple assets with unequal return history.}
 
-\item{gmvPortfolio}{is a logical flag, to indicate whether the Global Minimum Variance (GMV) 
-portfolio such as portfolio weights, portfolio reurn, portfolio standard
-deviation, portfolio sharpe ratio need to be computed. Default is FALSE.}
+\item{FUN}{indicates whether risk measures or the Global Minimum Variance (GMV) 
+portfolio statistics such as portfolio weights, portfolio reurn, portfolio standard
+deviation, portfolio sharpe ratio need to be computed. Two possible values
+are "riskMeasures" and "gmvPortfolio".}
 }
 \value{
+Based on the value of the FUN argument the function either returns the risk 
+measures or the GMV portfolio statistics.  
 \item{risk_metrics}{A matrix of risk measures for the whole combined backfilled dataset.}
-\item{output}{A list containing the matrix of risk measures for the whole combined backfilled dataset and the Global Minimum Variance portfolio weights, portfolio return, portfolio standard deviation, portfolio sharpe ratio}
+\item{gmvPortfolio_list}{A list containing the Global Minimum Variance portfolio weights and portfolio statistics such as portfolio return, portfolio standard deviation and portfolio sharpe ratio.}
 }
 \description{
 This function implements Combined Backfill for Multiple Asset Groups
