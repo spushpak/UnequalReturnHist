@@ -15,10 +15,12 @@ deviation, portfolio sharpe ratio need to be computed. Two possible values
 are "riskMeasures" and "gmvPortfolio".}
 }
 \value{
-Based on the value of the FUN argument the function either returns the risk 
+Based on the value of the \code{FUN} argument the function either returns the risk 
 measures or the GMV portfolio statistics.  
 \item{risk_metrics}{A matrix of risk measures for the whole combined backfilled dataset.}
-\item{gmvPortfolio_list}{A list containing the Global Minimum Variance portfolio weights and portfolio statistics such as portfolio return, portfolio standard deviation and portfolio sharpe ratio.}
+\item{gmvPortfolio_list}{A list containing the Global Minimum Variance 
+portfolio weights and portfolio statistics such as portfolio return, portfolio 
+standard deviation and portfolio sharpe ratio.}
 }
 \description{
 This function implements Combined Backfill for Multiple Asset Groups

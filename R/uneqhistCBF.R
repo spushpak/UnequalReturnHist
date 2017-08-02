@@ -1,28 +1,30 @@
 #' @title Implements Combined Backfill for Multiple Asset Groups
-#' 
-#' @description This function implements Combined Backfill for Multiple Asset Groups
-#' 
+#'   
+#' @description This function implements Combined Backfill for Multiple Asset
+#'   Groups
+#'   
 #' @importFrom xts xts
 #' @importFrom moments skewness kurtosis
 #' @importFrom stats as.formula coef lm resid sd
-#' 
+#'   
 #' @param dat_mat returns data for multiple assets with unequal return history.
-#' @param FUN indicates whether risk measures or the Global Minimum Variance (GMV) 
-#' portfolio statistics such as portfolio weights, portfolio reurn, portfolio standard
-#' deviation, portfolio sharpe ratio need to be computed. Two possible values
-#' are "riskMeasures" and "gmvPortfolio".
+#' @param FUN indicates whether risk measures or the Global Minimum Variance
+#'   (GMV) portfolio statistics such as portfolio weights, portfolio reurn,
+#'   portfolio standard deviation, portfolio sharpe ratio need to be computed.
+#'   Two possible values are "riskMeasures" and "gmvPortfolio".
+#'   
+#'   
+#' @return Based on the value of the \code{FUN} argument the function either
+#' returns the risk measures or the GMV portfolio statistics. 
+#' \item{risk_metrics}{A matrix of risk measures for the whole combined
+#' backfilled dataset.} \item{gmvPortfolio_list}{A list containing the Global
+#' Minimum Variance portfolio weights and portfolio statistics such as portfolio
+#' return, portfolio standard deviation and portfolio sharpe ratio.}
 #' 
 #' 
-#' @return
-#' Based on the value of the FUN argument the function either returns the risk 
-#' measures or the GMV portfolio statistics.  
-#' \item{risk_metrics}{A matrix of risk measures for the whole combined backfilled dataset.}
-#' \item{gmvPortfolio_list}{A list containing the Global Minimum Variance portfolio weights and portfolio statistics such as portfolio return, portfolio standard deviation and portfolio sharpe ratio.}
-#' 
-#'    
 #' @author Pushpak Sarkar
-#' 
-#' 
+#'   
+#'   
 #' @rdname uneqhistCBF
 #' @export
 

@@ -19,17 +19,17 @@
 #' 
 #' 
 #' @return
-#' Based on the value of the FUN argument the function either returns the risk 
-#' measures or the GMV portfolio statistics. If saveReps = TRUE, risk measures or 
+#' Based on the value of the \code{FUN} argument the function either returns the risk 
+#' measures or the GMV portfolio statistics. If \code{saveReps} = TRUE, risk measures or 
 #' GMV portfolio statistics are returned for each replicate else the average over all
 #' the replicates are returned. 
-#' \item{risk_metrics}{If FUN = "riskMeasures" and saveReps = TRUE, a list 
-#'  of length M containing risk measures for each replicate are returned.}
-#' \item{risk_vals}{If FUN = "riskMeasures" and saveReps = FALSE, a matrix 
+#' \item{risk_metrics}{If \code{FUN} = "riskMeasures" and \code{saveReps} = TRUE, a list 
+#'  of length \code{M} containing risk measures for each replicate are returned.}
+#' \item{risk_vals}{If \code{FUN} = "riskMeasures" and \code{saveReps} = FALSE, a matrix 
 #'  containing average of the risk measures over all replicates are returned.}
-#' \item{gmvPortfolio_list}{If FUN = "gmvPortfolio" and saveReps = TRUE, a list 
-#'  of length M containing GMV portfolio statistics for each replicate are retruned.}
-#' \item{gmvPortfolio}{If FUN = "gmvPortfolio" and saveReps = FALSE, a list 
+#' \item{gmvPortfolio_list}{If \code{FUN} = "gmvPortfolio" and \code{saveReps} = TRUE, a list 
+#'  of length \code{M} containing GMV portfolio statistics for each replicate are retruned.}
+#' \item{gmvPortfolio}{If \code{FUN} = "gmvPortfolio" and \code{saveReps} = FALSE, a list 
 #'  containing average of the GMV portfolio statistics over all replicates are returned.}
 #'    
 #' @author Pushpak Sarkar
