@@ -7,7 +7,7 @@
 #' @importFrom moments skewness kurtosis
 #' 
 #' 
-#' @param dat_mat is the returns data for multiple assets with unequal return history.
+#' @param dat_xts xts object containing the returns data for multiple assets with unequal return history.
 #' @param FUN indicates whether risk measures or the Global Minimum Variance (GMV) 
 #' portfolio statistics such as portfolio weights, portfolio reurn, portfolio standard
 #' deviation, portfolio sharpe ratio need to be computed. Two possible values
@@ -40,12 +40,8 @@
 
 uneqhistMI <- function(dat_mat, FUN, M=100, saveReps = FALSE){
   
-  # Convert the data to xts object (probably it's not necessary)
-  dat_xts <- xts(dat_mat[, -1], order.by = as.Date(dat_mat[, 1], "%m/%d/%Y"))
-  
-  # Keep a copy of original data - will be updated with fitted values for the
-  # missing portion
-  fitted_xts <- dat_xts 
+  # Convert the data to xts object
+  #dat_xts <- xts(dat_mat[, -1], order.by = as.Date(dat_mat[, 1], "%m/%d/%Y"))
   
   # Find which columns have 'NA' values; so these columns have shorter histtory
   miss_hist_var <- colnames(dat_xts)[apply(dat_xts, 2, anyNA)]
@@ -70,8 +66,13 @@ uneqhistMI <- function(dat_mat, FUN, M=100, saveReps = FALSE){
   # Full length of the dataset
   full_length <- nrow(dat_xts)
   
-  resid_mat <- matrix(NA, nrow = full_length, ncol = length(miss_hist_var))
-  colnames(resid_mat) <- miss_hist_var
+  est_coef <- matrix(NA, nrow = 1+ncol(dat_xts), 
+                     ncol = ncol(dat_xts) - length(long_hist_var))
+  rownames(est_coef) <- c("Intercept", colnames(dat_xts))
+  colnames(est_coef) <- miss_hist_var
+  
+  err_mat <- matrix(NA, nrow = nrow(dat_xts), ncol = ncol(dat_xts) - length(long_hist_var)) 
+  colnames(err_mat) <- miss_hist_var
   
   # Start with the short history columns which have the smallest number of 
   # observations missing i.e. this group is the longest short history group. Then 
@@ -80,18 +81,25 @@ uneqhistMI <- function(dat_mat, FUN, M=100, saveReps = FALSE){
     dep_var <- rownames(na_count)[na_count[, "numberMissing"]==i]
     indep_var <- rownames(na_count)[na_count[, "numberMissing"] < i]
     indep_var <- c(long_hist_var, indep_var)
-    temp_dat <- fitted_xts[, c(indep_var, dep_var), drop=F]
-    num_miss <- i
-    reg_dat <- fitValue(dep_var, indep_var, temp_dat, num_miss)
+    #temp_dat <- fitted_xts[, c(indep_var, dep_var), drop=F]
     
-    fitted_xts[reg_dat$miss_val, dep_var] <- reg_dat$fitted_dat[reg_dat$miss_val, dep_var]
-    resid_mat[(length(reg_dat$miss_val)+1):nrow(resid_mat), dep_var] <- reg_dat$err_mat[, dep_var]
-  } ############# end of for loop (for each short history group)
+    regressor_list <- paste(indep_var, collapse = "+")
+    reg_dat <- dat_xts[, c(indep_var, dep_var), drop=F]
+    miss_val <- which(is.na(dat_xts[, dep_var[1]]))
+    
+    for (j in dep_var) {
+      reg_eqn <- paste(j, "~", regressor_list)
+      reg <- lm(as.formula(reg_eqn), data=reg_dat)
+      betas <- as.matrix(coef(reg))
+      row.names(betas)[1] <- "Intercept"
+      
+      est_coef[which(row.names(betas) %in% row.names(est_coef)), j] <- betas
+      err_mat[(i+1):nrow(err_mat), j] <- as.matrix(resid(reg))
+    }
+  }   ############# end of for loop (for each short history group)
   
   # No. of bootstrap samples
   M <- M
-  
-  new_dat <- fitted_xts
   
   # Create an empty list to hold the risk and performance measures
   risk_metrics <- vector("list", M)
@@ -104,25 +112,36 @@ uneqhistMI <- function(dat_mat, FUN, M=100, saveReps = FALSE){
   
   # Create a list to hold portfolio return, sd, sharpe ratio for replicates
   portfolio_stats <- vector("list", M)
-  
   gmvPortfolio_list <- vector("list", M)
   
   # Bootstrap sampling - draw a random sample of size k (no. of missing obs) from 
   # (n-k) residuals with replacement. These k residuals are added to the k fitted 
   # values.
   for(i in 1:M){
+    new_dat <- dat_xts
     for (j in miss_itr) {
-      short_hist_var <- rownames(na_count)[na_count[, "numberMissing"]==j]
-      miss_val <- which(is.na(resid_mat[, short_hist_var[1]]))
-      num_miss <- length(miss_val)
-      sample_indx <- which(!is.na(resid_mat[, short_hist_var[1]]))
+      dep_var <- rownames(na_count)[na_count[, "numberMissing"]==j]
+      indep_var <- rownames(na_count)[na_count[, "numberMissing"] < j]
+      indep_var <- c(long_hist_var, indep_var)
+      
+      miss_val <- which(is.na(err_mat[, dep_var[1]]))
+      num_miss <- j
+      sample_indx <- which(!is.na(err_mat[, dep_var[1]]))
       
       r_sample <- sample(sample_indx, size=num_miss, replace=TRUE)
-      boot_resid <- resid_mat[r_sample, short_hist_var, drop=F]
-      colnames(boot_resid) <- short_hist_var
-      boot_resid <- as.xts(boot_resid, order.by = index(fitted_xts)[miss_val])
-      new_dat[miss_val, short_hist_var] <- fitted_xts[miss_val, short_hist_var, drop=F] + boot_resid[, short_hist_var, drop=F]
-    }
+      boot_resid <- err_mat[r_sample, dep_var, drop=F]
+      colnames(boot_resid) <- dep_var
+      boot_resid <- as.xts(boot_resid, order.by = index(dat_xts)[miss_val])
+      
+      # Compute the fitted values by using estimated beta coefficients
+      for (k in dep_var){
+        X_mat <- cbind(1, new_dat[which(is.na(new_dat[, k])), indep_var, drop=F])
+        betas <- est_coef[c("Intercept", indep_var), k, drop=F]
+        new_dat[which(is.na(dat_xts[, k])), k] <- X_mat%*%betas
+        new_dat[miss_val, k] <- new_dat[miss_val, k, drop=F] + boot_resid[, k, drop=F]  
+      }
+    }  
+    
     risk_metrics[[i]] <- constructRiskStats(new_dat)
     
     w_gmv <- constructGMVPortfolio(new_dat)
@@ -144,7 +163,23 @@ uneqhistMI <- function(dat_mat, FUN, M=100, saveReps = FALSE){
   }
   
   risk_vals <-  Reduce("+", risk_metrics) / length(risk_metrics)
- 
+  
+  # Compute the standard error
+  bootstrap_list <- vector("list", M)
+  
+  for(k in 1:M) {
+    bootstrap_list[[k]] <- (risk_metrics[[k]] - risk_vals)^2
+  }
+  
+  std_error <- Reduce("+", bootstrap_list) / (M - 1)
+  std_error <- round(std_error, digits = 7)
+  std_error[, long_hist_var] <- NA
+  row.names(std_error) <- paste(row.names(std_error), ".stdErr", sep = "")
+  
+  risk_vals <- rbind(risk_vals, std_error)
+  risk_vals <- risk_vals[order(row.names(risk_vals)), ]
+  round(risk_vals, digits = 5)
+   
   if (FUN == "gmvPortfolio") { 
     # Portfolio weights and stats are found for each replicate (Method 1)
     portfolio_stats_avg <- Reduce("+", portfolio_stats ) / length(portfolio_stats)

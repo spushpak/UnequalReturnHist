@@ -35,3 +35,4 @@ fitValue <- function(dep_var, indep_var, ret_dat, num_miss){
   
   return(reg_output)
 }
+

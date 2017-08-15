@@ -7,7 +7,7 @@
 #' @importFrom moments skewness kurtosis
 #' @importFrom stats as.formula coef lm resid sd
 #'   
-#' @param dat_mat returns data for multiple assets with unequal return history.
+#' @param dat_xts xts object containing the returns data for multiple assets with unequal return history.
 #' @param FUN indicates whether risk measures or the Global Minimum Variance
 #'   (GMV) portfolio statistics such as portfolio weights, portfolio reurn,
 #'   portfolio standard deviation, portfolio sharpe ratio need to be computed.
@@ -30,8 +30,8 @@
 
 uneqhistCBF <- function(dat_mat, FUN){
   
-  # Convert the data to xts object (probably it's not necessary)
-  dat_xts <- xts(dat_mat[, -1], order.by = as.Date(dat_mat[, 1], "%m/%d/%Y"))
+  # Convert the data to xts object
+  # dat_xts <- xts(dat_mat[, -1], order.by = as.Date(dat_mat[, 1], "%m/%d/%Y"))
   
   # Keep a copy of original data - will be updated with fitted values for the
   # missing portion
@@ -62,6 +62,14 @@ uneqhistCBF <- function(dat_mat, FUN){
   
   new_dat <- dat_xts[, long_hist_var]
   
+  est_coef <- matrix(NA, nrow = 1+ncol(dat_xts), 
+                     ncol = ncol(dat_xts) - length(long_hist_var))
+  rownames(est_coef) <- c("Intercept", colnames(dat_xts))
+  colnames(est_coef) <- miss_hist_var
+  
+  err_mat <- matrix(NA, nrow = nrow(dat_xts), ncol = ncol(dat_xts) - length(long_hist_var)) 
+  colnames(err_mat) <- miss_hist_var
+  
   # Start with the short history columns which have the smallest number of 
   # observations missing i.e. this group is the longest short history group. Then 
   # move on to the next shorter history group and so on.
@@ -69,39 +77,53 @@ uneqhistCBF <- function(dat_mat, FUN){
     dep_var <- rownames(na_count)[na_count[, "numberMissing"]==i]
     indep_var <- rownames(na_count)[na_count[, "numberMissing"] < i]
     indep_var <- c(long_hist_var, indep_var)
-    temp_dat <- fitted_xts[, c(indep_var, dep_var), drop=F]
+    
+    regressor_list <- paste(indep_var, collapse = "+")
+    reg_dat <- dat_xts[, c(indep_var, dep_var), drop=F]
+    miss_val <- which(is.na(dat_xts[, dep_var[1]]))
+    
+    for (j in dep_var) {
+      reg_eqn <- paste(j, "~", regressor_list)
+      reg <- lm(as.formula(reg_eqn), data=reg_dat)
+      betas <- as.matrix(coef(reg))
+      row.names(betas)[1] <- "Intercept"
+      
+      est_coef[which(row.names(betas) %in% row.names(est_coef)), j] <- betas
+      err_mat[(i+1):nrow(err_mat), j] <- as.matrix(resid(reg))
+    }
+    
+    num_resid <- nrow(as.matrix(resid(reg)))
     num_miss <- i
-    reg_dat <- fitValue(dep_var, indep_var, temp_dat, num_miss)
-    fitted_xts[reg_dat$miss_val, dep_var] <- reg_dat$fitted_dat[reg_dat$miss_val, dep_var]
     
-    num_resid <- nrow(reg_dat$err_mat)
-    miss_val <- reg_dat$miss_val
-    err_mat <- reg_dat$err_mat
-    num_miss <- length(miss_val)
-    
-    # Stack the original block 'new_dat' equal to number of residual times
+    # Stack the 'new_dat' equal to number of residual times
     temp_newdat <- matrix(rep(t(coredata(new_dat)), num_resid), ncol= ncol(new_dat), 
-                          byrow=TRUE)
+                           byrow=TRUE)
     colnames(temp_newdat) <- colnames(new_dat)
-    
-    # Number of times the 'fitted_dat' i.e. short_hist_var should be repeated
+     
+    # Number of times the short_hist_var should be repeated
     rep_num <- nrow(temp_newdat)/full_length
-    temp_fitdat <- matrix(rep(t(coredata(reg_dat$fitted_dat)), rep_num), 
-                          ncol= ncol(reg_dat$fitted_dat), byrow=TRUE)
-    colnames(temp_fitdat) <- colnames(reg_dat$fitted_dat)
-    
-    # Merge the existing new_dat and fitted_dat
-    new_dat <- cbind(temp_newdat, temp_fitdat)
-    
+    dep_dat <- matrix(rep(t(coredata(dat_xts[, dep_var, drop=F])), rep_num), 
+                      ncol= length(dep_var), byrow=TRUE)
+    colnames(dep_dat) <- dep_var
+         
+    # Merge the existing new_dat and temp_newdat
+    new_dat <- cbind(temp_newdat, dep_dat)
+
+    for (k in dep_var){
+      X_mat <- cbind(1, new_dat[which(is.na(new_dat[, k])), indep_var, drop=F])
+      betas <- est_coef[c("Intercept", indep_var), k, drop=F]
+      new_dat[which(is.na(new_dat[, k])), k] <- X_mat%*%betas
+    }
+
     # Crate the start index of each repeating block
     rep_indx <- seq(from = miss_val[1]-1, by = nrow(new_dat)/num_resid, 
-                    length.out = num_resid)
-    
+                   length.out = num_resid)
+     
     # Add the  respective residual to the fitted values of short history vars
     for (m in 1:length(rep_indx)) {
-      for (n in 1:num_miss) {
-        new_dat[rep_indx[m]+n, dep_var] <- new_dat[rep_indx[m]+n, dep_var] + err_mat[m, dep_var]
-      }
+     for (n in 1:num_miss) {
+       new_dat[rep_indx[m]+n, dep_var] <- new_dat[rep_indx[m]+n, dep_var] + err_mat[m+num_miss, dep_var]
+     }
     }
   } 
   
