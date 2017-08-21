@@ -93,7 +93,7 @@ uneqhistMI <- function(dat_mat, FUN, M=100, saveReps = FALSE){
       betas <- as.matrix(coef(reg))
       row.names(betas)[1] <- "Intercept"
       
-      est_coef[which(row.names(betas) %in% row.names(est_coef)), j] <- betas
+      est_coef[which(row.names(est_coef) %in% row.names(betas)), j] <- betas
       err_mat[(i+1):nrow(err_mat), j] <- as.matrix(resid(reg))
     }
   }   ############# end of for loop (for each short history group)
@@ -166,20 +166,27 @@ uneqhistMI <- function(dat_mat, FUN, M=100, saveReps = FALSE){
   
   # Compute the standard error
   bootstrap_list <- vector("list", M)
+  SR_list <- vector("list", M)
   
   for(k in 1:M) {
     bootstrap_list[[k]] <- (risk_metrics[[k]] - risk_vals)^2
+    SR <- risk_metrics[[k]]["Sharpe Ratio", ]
+    sk <- risk_metrics[[k]]["Skewness", ]
+    kurt <- risk_metrics[[k]]["Kurtosis", ]
+    SR_list[[k]] <- sqrt(1 - sk*SR + ((kurt+2)/4)*SR^2)/sqrt(full_length)
   }
   
-  std_error <- Reduce("+", bootstrap_list) / (M - 1)
-  std_error <- round(std_error, digits = 7)
-  std_error[, long_hist_var] <- NA
-  row.names(std_error) <- paste(row.names(std_error), ".stdErr", sep = "")
+  boot_std_error <- sqrt(Reduce("+", bootstrap_list) / (M - 1))
+  row.names(boot_std_error) <- paste(row.names(boot_std_error), 
+                                     ".bootstrap_stdErr", sep = "")
+  Sharpe_Ratio_stdErr <- Reduce("+", SR_list)/M
   
-  risk_vals <- rbind(risk_vals, std_error)
-  risk_vals <- risk_vals[order(row.names(risk_vals)), ]
-  round(risk_vals, digits = 5)
-   
+  risk_vals <- rbind(risk_vals, boot_std_error["Sharpe Ratio.bootstrap_stdErr", , drop=F], 
+                     Sharpe_Ratio_stdErr)
+  
+  risk_vals <- risk_vals[, order(colnames(risk_vals))]
+  risk_vals <- round(risk_vals, digits = 4) 
+  
   if (FUN == "gmvPortfolio") { 
     # Portfolio weights and stats are found for each replicate (Method 1)
     portfolio_stats_avg <- Reduce("+", portfolio_stats ) / length(portfolio_stats)

@@ -88,7 +88,7 @@ uneqhistCBF <- function(dat_mat, FUN){
       betas <- as.matrix(coef(reg))
       row.names(betas)[1] <- "Intercept"
       
-      est_coef[which(row.names(betas) %in% row.names(est_coef)), j] <- betas
+      est_coef[which(row.names(est_coef) %in% row.names(betas)), j] <- betas
       err_mat[(i+1):nrow(err_mat), j] <- as.matrix(resid(reg))
     }
     
