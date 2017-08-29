@@ -4,26 +4,30 @@
 \alias{uneqhistCBF}
 \title{Implements Combined Backfill for Multiple Asset Groups}
 \usage{
-uneqhistCBF(dat_mat, FUN)
+uneqhistCBF(dat_xts, FUN)
 }
 \arguments{
-\item{dat_mat}{returns data for multiple assets with unequal return history.}
+\item{dat_xts}{xts object containing the returns data for multiple assets with unequal return history.}
 
-\item{FUN}{indicates whether risk measures or the Global Minimum Variance (GMV) 
-portfolio statistics such as portfolio weights, portfolio reurn, portfolio standard
-deviation, portfolio sharpe ratio need to be computed. Two possible values
-are "riskMeasures" and "gmvPortfolio".}
+\item{FUN}{indicates whether risk measures or the Global Minimum Variance
+(GMV) portfolio statistics such as portfolio weights, portfolio reurn,
+portfolio standard deviation, portfolio sharpe ratio need to be computed.
+Two possible values are "riskMeasures" and "gmvPortfolio".}
 }
 \value{
-Based on the value of the \code{FUN} argument the function either returns the risk 
-measures or the GMV portfolio statistics.  
-\item{risk_metrics}{A matrix of risk measures for the whole combined backfilled dataset.}
-\item{gmvPortfolio_list}{A list containing the Global Minimum Variance 
-portfolio weights and portfolio statistics such as portfolio return, portfolio 
-standard deviation and portfolio sharpe ratio.}
+Based on the value of the \code{FUN} argument the function either
+returns the risk measures or the GMV portfolio statistics. 
+\item{risk_metrics}{A matrix of risk measures for the whole combined
+backfilled dataset.} \item{gmvPortfolio_list}{A list containing the Global
+Minimum Variance portfolio weights and portfolio statistics such as portfolio
+return, portfolio standard deviation and portfolio sharpe ratio.}
 }
 \description{
-This function implements Combined Backfill for Multiple Asset Groups
+This function implements Combined Backfill for Multiple Asset
+  Groups
+}
+\references{
+Jiang, Y. and Martin, R. D. (2016). "Turning Long and Short Return Histories into Equal Histories: A Better Way to Backfill Returns", https://ssrn.com/abstract=2833057.
 }
 \author{
 Pushpak Sarkar

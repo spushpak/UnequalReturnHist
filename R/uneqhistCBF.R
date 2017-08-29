@@ -2,10 +2,11 @@
 #'   
 #' @description This function implements Combined Backfill for Multiple Asset
 #'   Groups
-#'   
+#'  
+#' @importFrom zoo coredata index 
 #' @importFrom xts xts
 #' @importFrom moments skewness kurtosis
-#' @importFrom stats as.formula coef lm resid sd
+#' @importFrom stats as.formula coef lm resid sd cov
 #'   
 #' @param dat_xts xts object containing the returns data for multiple assets with unequal return history.
 #' @param FUN indicates whether risk measures or the Global Minimum Variance
@@ -23,12 +24,14 @@
 #' 
 #' 
 #' @author Pushpak Sarkar
-#'   
+#'  
+#' @references
+#' Jiang, Y. and Martin, R. D. (2016). "Turning Long and Short Return Histories into Equal Histories: A Better Way to Backfill Returns", https://ssrn.com/abstract=2833057.    
 #'   
 #' @rdname uneqhistCBF
 #' @export
 
-uneqhistCBF <- function(dat_mat, FUN){
+uneqhistCBF <- function(dat_xts, FUN){
   
   # Convert the data to xts object
   # dat_xts <- xts(dat_mat[, -1], order.by = as.Date(dat_mat[, 1], "%m/%d/%Y"))

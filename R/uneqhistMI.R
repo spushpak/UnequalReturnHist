@@ -3,8 +3,10 @@
 #' @description This function implements Multiple Imputation Method folowing 
 #' Page(2013)
 #' 
+#' @importFrom zoo coredata index 
 #' @importFrom xts xts
 #' @importFrom moments skewness kurtosis
+#' @importFrom stats as.formula coef lm resid sd cov
 #' 
 #' 
 #' @param dat_xts xts object containing the returns data for multiple assets with unequal return history.
@@ -34,11 +36,13 @@
 #'    
 #' @author Pushpak Sarkar
 #' 
+#' @references 
+#' Page, Sebastien (2013). "How to Combine Long and Short Return Histories Efficiently", Financial Analysts Journal, pp. 45-52.
 #' 
 #' @rdname uneqhistMI
 #' @export
 
-uneqhistMI <- function(dat_mat, FUN, M=100, saveReps = FALSE){
+uneqhistMI <- function(dat_xts, FUN, M=100, saveReps = FALSE){
   
   # Convert the data to xts object
   #dat_xts <- xts(dat_mat[, -1], order.by = as.Date(dat_mat[, 1], "%m/%d/%Y"))
@@ -165,21 +169,18 @@ uneqhistMI <- function(dat_mat, FUN, M=100, saveReps = FALSE){
   risk_vals <-  Reduce("+", risk_metrics) / length(risk_metrics)
   
   # Compute the standard error
-  bootstrap_list <- vector("list", M)
   SR_list <- vector("list", M)
   
   for(k in 1:M) {
-    bootstrap_list[[k]] <- (risk_metrics[[k]] - risk_vals)^2
     SR <- risk_metrics[[k]]["Sharpe Ratio", ]
     sk <- risk_metrics[[k]]["Skewness", ]
-    kurt <- risk_metrics[[k]]["Kurtosis", ]
-    SR_list[[k]] <- sqrt(1 - sk*SR + ((kurt+2)/4)*SR^2)/sqrt(full_length)
+    kurt <- risk_metrics[[k]]["Kurtosis", ] - 3
+    SR_list[[k]] <- sqrt((1 - sk*SR + 0.25*(kurt+2)*SR^2)/full_length)
   }
   
-  boot_std_error <- sqrt(Reduce("+", bootstrap_list) / (M - 1))
-  row.names(boot_std_error) <- paste(row.names(boot_std_error), 
-                                     ".bootstrap_stdErr", sep = "")
   Sharpe_Ratio_stdErr <- Reduce("+", SR_list)/M
+  boot_std_error <- bootstrapStdError(dat_xts)
+  
   
   risk_vals <- rbind(risk_vals, boot_std_error["Sharpe Ratio.bootstrap_stdErr", , drop=F], 
                      Sharpe_Ratio_stdErr)

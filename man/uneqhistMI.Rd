@@ -4,10 +4,10 @@
 \alias{uneqhistMI}
 \title{Implements Multiple Imputation Method folowing Page(2013)}
 \usage{
-uneqhistMI(dat_mat, FUN, M = 100, saveReps = FALSE)
+uneqhistMI(dat_xts, FUN, M = 100, saveReps = FALSE)
 }
 \arguments{
-\item{dat_mat}{is the returns data for multiple assets with unequal return history.}
+\item{dat_xts}{xts object containing the returns data for multiple assets with unequal return history.}
 
 \item{FUN}{indicates whether risk measures or the Global Minimum Variance (GMV) 
 portfolio statistics such as portfolio weights, portfolio reurn, portfolio standard
@@ -36,6 +36,9 @@ the replicates are returned.
 \description{
 This function implements Multiple Imputation Method folowing 
 Page(2013)
+}
+\references{
+Page, Sebastien (2013). "How to Combine Long and Short Return Histories Efficiently", Financial Analysts Journal, pp. 45-52.
 }
 \author{
 Pushpak Sarkar
