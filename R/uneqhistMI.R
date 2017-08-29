@@ -4,7 +4,7 @@
 #' Page(2013)
 #' 
 #' @importFrom zoo coredata index 
-#' @importFrom xts xts
+#' @importFrom xts xts as.xts
 #' @importFrom moments skewness kurtosis
 #' @importFrom stats as.formula coef lm resid sd cov
 #' 
