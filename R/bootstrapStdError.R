@@ -67,7 +67,7 @@ bootstrapStdError <- function(dat_xts) {
 
   boot_std_error <- sqrt(Reduce("+", bootstrap_list) / (B - 1))
   row.names(boot_std_error) <- paste(row.names(boot_std_error), 
-                                     "._stdErr_CBF", sep = "")
+                                     "_stdErr_CBF", sep = "")
   return(boot_std_error)
 }
 
