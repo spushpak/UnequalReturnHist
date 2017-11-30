@@ -37,6 +37,8 @@ uneqhistCBF <- function(dat_xts, FUN){
 
   risk_metrics <- constructRiskStats(new_dat)  
   row.names(risk_metrics) <- paste(row.names(risk_metrics), "_CBF", sep = "")
+  risk_metrics <- risk_metrics[, order(colnames(risk_metrics))]
+  
    
   if (FUN == "gmvPortfolio") {
     w_gmv <- constructGMVPortfolio(new_dat)

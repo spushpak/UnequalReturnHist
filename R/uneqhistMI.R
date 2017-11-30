@@ -164,42 +164,42 @@ uneqhistMI <- function(dat_xts, FUN, M=100, saveReps = FALSE){
                               "Portfolio_Stats" = port_stats)
     
     cov_gmvport[[i]] <- cov(new_dat)
-  }
+  }  # Loop for M ends here
+  
   
   risk_vals <-  Reduce("+", risk_metrics) / length(risk_metrics)
   row.names(risk_vals) <- paste(row.names(risk_vals), "_MI", sep = "")
+  risk_vals <- risk_vals[, order(colnames(risk_vals))]
   
   # Compute the standard error
   # SR_list <- vector("list", M)
-  
+  # 
   # for(k in 1:M) {
-  #   SR <- risk_metrics[[k]]["Sharpe Ratio", ]
-  #   sk <- risk_metrics[[k]]["Skewness", ]
-  #   kurt <- risk_metrics[[k]]["Kurtosis", ] - 3
-  #   SR_list[[k]] <- sqrt((1 - sk*SR + 0.25*(kurt+2)*SR^2)/full_length)
+  #  SR <- risk_metrics[[k]]["Sharpe Ratio", ]
+  #  sk <- risk_metrics[[k]]["Skewness", ]
+  #  kurt <- risk_metrics[[k]]["Kurtosis", ] - 3
+  #  SR_list[[k]] <- sqrt((1 - sk*SR + 0.25*(kurt+2)*SR^2)/full_length)
+  # }
+  # Sharpe_Ratio_stdErr <- Reduce("+", SR_list)/M
+  
+  # boot_std_error <- btstrapMIse(dat_xts)
+  
+  #risk_vals <- rbind(risk_vals, boot_std_error["Sharpe Ratio.bootstrap_stdErr", , drop=F],
+  #                  Sharpe_Ratio_stdErr)
+  
+  
+  # stderr_list <- vector("list", M)
+  # for(k in 1:M) {
+  #   stderr_list[[k]] <- (risk_metrics[[k]] - risk_vals)^2
   # }
   
-  # Sharpe_Ratio_stdErr <- Reduce("+", SR_list)/M
-  # boot_std_error <- bootstrapStdError(dat_xts)
+  # std_error <- sqrt(Reduce("+", stderr_list) / (M - 1))
+  # row.names(std_error) <- paste(row.names(std_error), "_stdErr_MI", sep = "")
   
+  # risk_vals <- rbind(risk_vals, std_error)
   
-  # risk_vals <- rbind(risk_vals, boot_std_error["Sharpe Ratio.bootstrap_stdErr", , drop=F], 
-  #                    Sharpe_Ratio_stdErr)
-  
-  
-  stderr_list <- vector("list", M)
-  
-  for(k in 1:M) {
-    stderr_list[[k]] <- (risk_metrics[[k]] - risk_vals)^2
-  }
-  
-  std_error <- sqrt(Reduce("+", stderr_list) / (M - 1))
-  row.names(std_error) <- paste(row.names(std_error), "_stdErr_MI", sep = "")
-  
-  risk_vals <- rbind(risk_vals, std_error)
-  risk_vals <- risk_vals[, order(colnames(risk_vals))]
   risk_vals <- round(risk_vals, digits = 3) 
-  risk_vals <- risk_vals[order(row.names(risk_vals)), ]
+  #risk_vals <- risk_vals[order(row.names(risk_vals)), ]
   
   if (FUN == "gmvPortfolio") { 
     # Portfolio weights and stats are found for each replicate (Method 1)

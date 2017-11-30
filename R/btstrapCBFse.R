@@ -9,11 +9,11 @@
 #' 
 #' @author Pushpak Sarkar
 #'
-#' @rdname bootstrapStdError
-#' @export bootstrapStdError
+#' @rdname btstrapCBFse
+#' @export 
 
 
-bootstrapStdError <- function(dat_xts) {
+btstrapCBFse <- function(dat_xts) {
 
   # Find which columns have 'NA' values; so these columns have shorter histtory
   miss_hist_var <- colnames(dat_xts)[apply(dat_xts, 2, anyNA)]
